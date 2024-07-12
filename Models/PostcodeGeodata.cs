@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace WorldCompanyDataViewer.Models
 {
-    internal class PostcodeGeodata
+    public class PostcodeGeodata
     {
         public PostcodeGeodata(string postcode, decimal longitude, decimal latitude)
         {

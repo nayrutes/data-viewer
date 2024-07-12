@@ -24,6 +24,7 @@ using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using static System.Net.WebRequestMethods;
 using WorldCompanyDataViewer.ViewModels;
+using WorldCompanyDataViewer.Services;
 
 namespace WorldCompanyDataViewer
 {
@@ -40,7 +41,7 @@ namespace WorldCompanyDataViewer
 
         public MainWindow()
         {
-            _postcodeAnalysis = new PostcodeAnalysis();
+            _postcodeAnalysis = new PostcodeAnalysis(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             InitializeComponent();
             dataEntryViewSource = (CollectionViewSource)FindResource(nameof(dataEntryViewSource));
         }
