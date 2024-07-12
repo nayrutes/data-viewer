@@ -1,0 +1,38 @@
+﻿<Window x:Class="WorldCompanyDataViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WorldCompanyDataViewer"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
+    <Window.Resources>
+        <CollectionViewSource x:Key="dataEntryViewSource"/>
+    </Window.Resources>
+    <Window.CommandBindings>
+        <CommandBinding Command="local:CustomCommands.LoadCSV" Executed="LoadCSVCommand_Executed" CanExecute="CommonCommandBinding_CanExecute" />
+    </Window.CommandBindings>
+    <DockPanel>
+        <!--<ToolBarTray DockPanel.Dock="Top">-->
+            <ToolBar DockPanel.Dock="Top">
+                <Button Command="local:CustomCommands.LoadCSV" Content="LoadCSV" />
+            </ToolBar>
+        <!--</ToolBarTray>-->
+        <Grid>
+            <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
+                      EnableRowVirtualization="True"
+                      IsReadOnly="True"
+                      ItemsSource="{Binding Source={StaticResource dataEntryViewSource}}" 
+                      Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">
+                <!--<DataGrid.Columns>
+                    <DataGridTextColumn Binding="{Binding Id}"
+                        Header="Entry Id" Width="SizeToHeader"
+                        IsReadOnly="True"/>
+                    <DataGridTextColumn Binding="{Binding FirstName}" Header="FirstName" 
+                        Width="*"/>
+                </DataGrid.Columns>-->
+            </DataGrid>
+        </Grid>
+    </DockPanel>
+    
+</Window>
