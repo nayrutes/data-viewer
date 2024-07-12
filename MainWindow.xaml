@@ -11,12 +11,15 @@
     </Window.Resources>
     <Window.CommandBindings>
         <CommandBinding Command="local:CustomCommands.LoadCSV" Executed="LoadCSVCommand_Executed" CanExecute="CommonCommandBinding_CanExecute" />
+        <CommandBinding Command="local:CustomCommands.RequestPostcodeLocations" Executed="RequestPostcodeLocations_Executed" CanExecute="RequestPostcodeLocations_CanExecute" />
     </Window.CommandBindings>
     <DockPanel>
         <!--<ToolBarTray DockPanel.Dock="Top">-->
-            <ToolBar DockPanel.Dock="Top">
-                <Button Command="local:CustomCommands.LoadCSV" Content="LoadCSV" />
-            </ToolBar>
+        <ToolBar DockPanel.Dock="Top">
+            <Button Command="local:CustomCommands.LoadCSV" Content="LoadCSV" />
+            <Button Command="local:CustomCommands.RequestPostcodeLocations" Content="RequestPostcodeLocations" />
+        </ToolBar>
+        <Label x:Name="AnalysisStatusLabel" DockPanel.Dock="Bottom" Height="40"/>
         <!--</ToolBarTray>-->
         <Grid>
             <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
