@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="UnitTests\**" />
+    <EmbeddedResource Remove="UnitTests\**" />
+    <None Remove="UnitTests\**" />
+    <Page Remove="UnitTests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Views\" />
   </ItemGroup>
 

@@ -17,9 +17,18 @@
         <!--<ToolBarTray DockPanel.Dock="Top">-->
         <ToolBar DockPanel.Dock="Top">
             <Button Command="local:CustomCommands.LoadCSV" Content="LoadCSV" />
-            <Button Command="local:CustomCommands.RequestPostcodeLocations" Content="RequestPostcodeLocations" />
+            <Button Command="local:CustomCommands.RequestPostcodeLocations" Content="Analyze Postcode Locations" />
         </ToolBar>
-        <Label x:Name="AnalysisStatusLabel" DockPanel.Dock="Bottom" Height="40"/>
+        <TextBox x:Name="AnalysisStatusLabel" Text="Data Alaysis Status" DockPanel.Dock="Bottom" Height="40">
+            <TextBox.Style>
+                <Style TargetType="TextBox">
+                    <Setter Property="IsReadOnly" Value="True" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="TextWrapping" Value="Wrap" />
+                </Style>
+            </TextBox.Style>
+        </TextBox>
+        <!--<Label x:Name="AnalysisStatusLabel" DockPanel.Dock="Bottom" Height="40"/>-->
         <!--</ToolBarTray>-->
         <Grid>
             <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"

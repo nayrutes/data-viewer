@@ -1,28 +1,12 @@
-﻿using System.Collections.ObjectModel;
-using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Microsoft.EntityFrameworkCore;
 using WorldCompanyDataViewer.Models;
-using static System.Net.Mime.MediaTypeNames;
-using System.Security.Policy;
-using System.Text.Json;
-using System.Net.Http.Json;
-using System.Text.Json.Serialization;
-using static System.Net.WebRequestMethods;
 using WorldCompanyDataViewer.ViewModels;
 using WorldCompanyDataViewer.Services;
 
@@ -41,6 +25,7 @@ namespace WorldCompanyDataViewer
 
         public MainWindow()
         {
+            //_postcodeAnalysis = new PostcodeAnalysis(new TestDataPostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             _postcodeAnalysis = new PostcodeAnalysis(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             InitializeComponent();
             dataEntryViewSource = (CollectionViewSource)FindResource(nameof(dataEntryViewSource));
@@ -148,11 +133,17 @@ namespace WorldCompanyDataViewer
         private async void RequestPostcodeLocations_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             _postcodesRequestActive = true;
-            AnalysisStatusLabel.Content = "Processing";
-            await _postcodeAnalysis.AnalyzePostcodes(_context);
-            AnalysisStatusLabel.Content = $"Analyzed {_postcodeAnalysis.PostcodeLocations.Count} postcode locations";
+            AnalysisStatusLabel.Text = "Processing";
+            List<(decimal, decimal)> clusters = await _postcodeAnalysis.AnalyzePostcodes(_context);
+            string clusterText = "";
+            foreach (var cluster in clusters)
+            {
+                clusterText += $"({cluster.Item1},{cluster.Item2})";
+            }
+            AnalysisStatusLabel.Text = $"Analyzed {_postcodeAnalysis.PostcodeLocations.Count} postcode locations. " +
+                $"Found clusters: {clusterText}";
             _postcodesRequestActive = false;
-        }        
+        }
 
         private void RequestPostcodeLocations_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
@@ -178,7 +169,7 @@ namespace WorldCompanyDataViewer
                 "RequestPostcodeLocations",
                 typeof(MainWindow)
             );
-                
+
 
     }
 }
