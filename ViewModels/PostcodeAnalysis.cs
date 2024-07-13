@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Media3D;
 using Microsoft.EntityFrameworkCore;
 using WorldCompanyDataViewer.Models;
@@ -19,14 +20,30 @@ namespace WorldCompanyDataViewer.ViewModels
         }
 
         //TODO consider caching PostcodeLocations
-        public async Task<List<(decimal, decimal)>> AnalyzePostcodes(DataEntryContext context)
+        //TODO change signature or split into seperate methods but don't change pushpins here (only for quick testing)
+        public async Task<List<(decimal, decimal)>> AnalyzePostcodes(DataEntryContext context, List<MapControl.Pushpin> pushpins)
         {
             Dictionary<string, int> postcodesCounts = await GetAllPostCodesWithCount(context);
 
             List<string> postcodes = postcodesCounts.Keys.ToList();
 
             PostcodeLocations = await postcodeLocationService.RequestPostcodeLocationsAsync(postcodes);
-            return KMeansClustering(3, PostcodeLocations, 20);
+            PostcodeLocations.ForEach(x => pushpins.Add(new MapControl.Pushpin()
+            {
+                AutoCollapse = true,
+                Content = x.Postcode,
+                Location = new MapControl.Location(decimal.ToDouble(x.Latitude), decimal.ToDouble(x.Longitude))
+            }));
+            List<(decimal, decimal)> clusterResult = KMeansClustering(10, PostcodeLocations, 100);
+            clusterResult.ForEach(x => pushpins.Add(new MapControl.Pushpin()
+            {
+                AutoCollapse = true,
+                Content = "<cluster>",
+                Location = new MapControl.Location(decimal.ToDouble(x.Item2), decimal.ToDouble(x.Item1)),
+                Background = new SolidColorBrush(Colors.DarkRed),
+                
+            }));
+            return clusterResult;
         }
 
         private async Task<Dictionary<string, int>> GetAllPostCodesWithCount(DataEntryContext context)

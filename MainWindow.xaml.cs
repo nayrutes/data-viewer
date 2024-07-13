@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using WorldCompanyDataViewer.Models;
 using WorldCompanyDataViewer.ViewModels;
 using WorldCompanyDataViewer.Services;
+using MapControl;
 
 namespace WorldCompanyDataViewer
 {
@@ -23,18 +24,30 @@ namespace WorldCompanyDataViewer
 
         private PostcodeAnalysis _postcodeAnalysis;
 
+        public List<Pushpin> Pushpins { get; } = new List<Pushpin>();
+
         public MainWindow()
         {
             //_postcodeAnalysis = new PostcodeAnalysis(new TestDataPostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             _postcodeAnalysis = new PostcodeAnalysis(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             InitializeComponent();
             dataEntryViewSource = (CollectionViewSource)FindResource(nameof(dataEntryViewSource));
+            DataContext = this;
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             //TODO use Migration instead in outside of demo
             LoadContext();
+            var mtl = new MapTileLayer();
+            mtl.SourceName = "OpenStreetMap";
+            mtl.Description = "© [OpenStreetMap contributors](http://www.openstreetmap.org/copyright)";
+            mtl.TileSource = new TileSource()
+            {
+                UriTemplate = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            };
+            MapControl.MapLayer = mtl;
+            
         }
 
         //TODO consider loading Async
@@ -132,9 +145,11 @@ namespace WorldCompanyDataViewer
         private bool _postcodesRequestActive;
         private async void RequestPostcodeLocations_Executed(object sender, ExecutedRoutedEventArgs e)
         {
+            Pushpins.ForEach(x => MapControl.Children.Remove(x));
+            Pushpins.Clear();
             _postcodesRequestActive = true;
             AnalysisStatusLabel.Text = "Processing";
-            List<(decimal, decimal)> clusters = await _postcodeAnalysis.AnalyzePostcodes(_context);
+            List<(decimal, decimal)> clusters = await _postcodeAnalysis.AnalyzePostcodes(_context, Pushpins);
             string clusterText = "";
             foreach (var cluster in clusters)
             {
@@ -143,6 +158,8 @@ namespace WorldCompanyDataViewer
             AnalysisStatusLabel.Text = $"Analyzed {_postcodeAnalysis.PostcodeLocations.Count} postcode locations. " +
                 $"Found clusters: {clusterText}";
             _postcodesRequestActive = false;
+
+            Pushpins.ForEach(x => MapControl.Children.Add(x));
         }
 
         private void RequestPostcodeLocations_CanExecute(object sender, CanExecuteRoutedEventArgs e)
