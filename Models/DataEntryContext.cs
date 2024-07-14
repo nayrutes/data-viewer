@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace WorldCompanyDataViewer.Models
 {
-    internal class DataEntryContext : DbContext
+    public class DataEntryContext : DbContext
     {
         //TODO split up into 2 or more Models as tasks asks for 2 or more tables in the db
         public DbSet<DataEntry> DataEntries { get; set; }

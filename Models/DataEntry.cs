@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace WorldCompanyDataViewer.Models
 {
     //TODO split up into 2 or more Models as tasks asks for 2 or more tables in the db
-    internal class DataEntry
+    public class DataEntry
     {
         //"first_name","last_name","company_name","address","city","county","postal","phone1","phone2","email","web"
         [Key]

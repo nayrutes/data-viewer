@@ -1,6 +1,8 @@
 ﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media.Media3D;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using WorldCompanyDataViewer.Models;
 using WorldCompanyDataViewer.Services;
@@ -8,32 +10,66 @@ using WorldCompanyDataViewer.Utils;
 
 namespace WorldCompanyDataViewer.ViewModels
 {
-    internal class PostcodeAnalysis
+    public partial class PostcodeAnalysisViewModel : ObservableObject
     {
-        public List<PostcodeGeodata> PostcodeLocations { get; private set; } = new();
+        public DataEntryContext? DataEntryContext { get; set; }
         public readonly IPostcodeLocationService postcodeLocationService;
 
-        public PostcodeAnalysis(IPostcodeLocationService postcodeLocationService)
+        [ObservableProperty]
+        private string _statusText = "Data Analysis Status - Not Started";
+
+        private List<PostcodeGeodata> _postcodeLocations = new();
+        Dictionary<string, int> _postcodesCounts = new();
+
+        public PostcodeAnalysisViewModel()
+        {
+            postcodeLocationService = new TestDataPostcodeLocationService();
+        }
+
+        public PostcodeAnalysisViewModel(IPostcodeLocationService postcodeLocationService)
         {
             this.postcodeLocationService = postcodeLocationService;
         }
 
-        //TODO consider caching PostcodeLocations
-        public async Task<List<(decimal, decimal)>> AnalyzePostcodes(DataEntryContext context)
+        [RelayCommand]
+        public async Task FetchGeolocationDataAsync()
         {
-            Dictionary<string, int> postcodesCounts = await GetAllPostCodesWithCount(context);
-
-            List<string> postcodes = postcodesCounts.Keys.ToList();
-
-            PostcodeLocations = await postcodeLocationService.RequestPostcodeLocationsAsync(postcodes);
-            return KMeansClustering(3, PostcodeLocations, 20);
+            if (DataEntryContext == null)
+            {
+                Debug.WriteLine("Datacontext was null when calling FetchGeolocationData");
+                return;
+            }
+            _postcodesCounts = await GetAllPostCodesWithCountAsync(DataEntryContext);
+            _postcodeLocations = await postcodeLocationService.RequestPostcodeLocationsAsync(_postcodesCounts.Keys.ToList());
         }
 
-        private async Task<Dictionary<string, int>> GetAllPostCodesWithCount(DataEntryContext context)
+        [RelayCommand]
+        public async Task<List<(decimal, decimal)>> AnalyzePostcodesAsync(DataEntryContext context)
         {
-            if (context == null)
+            if (DataEntryContext == null)
             {
-                return null;
+                Debug.WriteLine("Datacontext was null when calling AnalyzePostcodes");
+                return new();
+            }
+            int clusterCount = 3;
+            StatusText = $"Running KMeans Clustering with {clusterCount} clusters on {_postcodeLocations.Count} datapoints";
+            //TODO fetch geolocations if not available or not up to date
+            List<(decimal, decimal)> clusters = await Task.Run(() => KMeansClustering(clusterCount, _postcodeLocations, 20));
+            string clusterText = "";
+            foreach (var cluster in clusters)
+            {
+                clusterText += $"({cluster.Item1},{cluster.Item2})";
+            }
+            StatusText = $"Found {clusters.Count} at (lon,lat): {clusterText}";
+            return clusters;
+        }
+
+        private async Task<Dictionary<string, int>> GetAllPostCodesWithCountAsync(DataEntryContext context)
+        {
+            if (DataEntryContext == null)
+            {
+                Debug.WriteLine("Datacontext was null when calling GetAllPostCodesWithCount");
+                return new();
             }
             Dictionary<string, int> result = await context.DataEntries.GroupBy(t => t.Postal)
                 .Select(g => new
@@ -129,7 +165,7 @@ namespace WorldCompanyDataViewer.ViewModels
                     if (collectionToAverage.Any())
                     {
                         Vector3D average = collectionToAverage.Average();//TODO consider loss of precision or even overflowing - should not be the case with double and 1M entries
-                        if(centroidsPos[centroidIndex] != average)
+                        if (centroidsPos[centroidIndex] != average)
                         {
                             centroidsPos[centroidIndex] = average;
                             valueChanged = true;

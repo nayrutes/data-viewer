@@ -3,76 +3,26 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WorldCompanyDataViewer"
+        xmlns:views="clr-namespace:WorldCompanyDataViewer.Views"
+        xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
+        d:DataContext="{d:DesignInstance Type=viewModels:MainWindowViewModel}"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
-    <Window.Resources>
-        <CollectionViewSource x:Key="dataEntryViewSource"/>
-    </Window.Resources>
-    <Window.CommandBindings>
-        <CommandBinding Command="local:CustomCommands.LoadCSV" Executed="LoadCSVCommand_Executed" CanExecute="CommonCommandBinding_CanExecute" />
-        <CommandBinding Command="local:CustomCommands.RequestPostcodeLocations" Executed="RequestPostcodeLocations_Executed" CanExecute="RequestPostcodeLocations_CanExecute" />
-    </Window.CommandBindings>
     <DockPanel>
-        <!--<ToolBarTray DockPanel.Dock="Top">-->
         <ToolBar DockPanel.Dock="Top">
-            <Button Command="local:CustomCommands.LoadCSV" Content="LoadCSV" />
-            <Button Command="local:CustomCommands.RequestPostcodeLocations" Content="Analyze Postcode Locations" />
+            <Button Command="{Binding LoadCSVCommand}" Content="Load CSV"/>
         </ToolBar>
         <TabControl DockPanel.Dock="Top">
             <TabItem Header="Main Data View">
-                <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
-                    EnableRowVirtualization="True"
-                    IsReadOnly="True"
-                    ItemsSource="{Binding Source={StaticResource dataEntryViewSource}}" 
-                    Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">  
-                </DataGrid>
+                <views:MainDataView DataContext="{Binding DataViewModel}"/>
             </TabItem>
             <TabItem Header="Email Domains">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                        <Label Content="Top 3 Email Domains: "/>
-                        <Label Content="l1"/>
-                        <Label Content="l2"/>
-                        <Label Content="l3"/>
-                    </StackPanel>
-                    <DataGrid>
-                        
-                    </DataGrid>
-                </DockPanel>
+                <views:EmailAnalysisView DataContext="{Binding EmailAnalysisViewModel}"/>
             </TabItem>
             <TabItem Header="Geodata">
-                <DockPanel>
-                    <TextBox x:Name="AnalysisStatusLabel" Text="Data Alaysis Status - Not Started" DockPanel.Dock="Top" Height="40">
-                        <TextBox.Style>
-                            <Style TargetType="TextBox">
-                                <Setter Property="IsReadOnly" Value="True" />
-                                <Setter Property="BorderThickness" Value="0" />
-                                <Setter Property="TextWrapping" Value="Wrap" />
-                            </Style>
-                        </TextBox.Style>
-                    </TextBox>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="100"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <Button Content="Fetch Geolocations"/>
-                            <Label Content="Cluster count:"/>
-                            <TextBox/>
-                            <Button Content="FindClusters"/>
-                        </StackPanel>
-                        <DataGrid Grid.Column="1">
-
-                        </DataGrid>
-                    </Grid>
-                </DockPanel>
+                <views:PostcodeAnalysisView DataContext="{Binding PostcodeAnalysisViewModel}"/>
             </TabItem>
         </TabControl>
-
-        <!--<Label x:Name="AnalysisStatusLabel" DockPanel.Dock="Bottom" Height="40"/>-->
-        <!--</ToolBarTray>-->
     </DockPanel>
 
 </Window>
