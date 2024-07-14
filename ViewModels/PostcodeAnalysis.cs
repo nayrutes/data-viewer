@@ -77,6 +77,7 @@ namespace WorldCompanyDataViewer.ViewModels
         //https://gis.stackexchange.com/questions/7555/computing-an-averaged-latitude-and-longitude-coordinates
         private static List<(decimal, decimal)> KMeansClustering(int clusterCount, List<PostcodeGeodata> geodata, int maxIterations)
         {
+            if (clusterCount <= 0 || clusterCount > geodata.Count) { throw new ArgumentException($"cluster count must be larger than 0 and smaller or equal than the count of datapoints"); }
             Vector3D?[] centroidsPos = new Vector3D?[clusterCount];
             Vector3D[] geoDataPos = new Vector3D[geodata.Count];
             int[] centroidIdAssignments = new int[geoDataPos.Length];
@@ -101,15 +102,14 @@ namespace WorldCompanyDataViewer.ViewModels
             }
 
             //Loop
-            bool assignmentsChanged = true;
+            bool earlyExit = false;
             for (int iter = 0; iter < maxIterations; iter++)
             {
-                if (!assignmentsChanged)
+                if (earlyExit)
                 {
                     Debug.WriteLine($"Early exit of KMeans with {iter} iterations of max {maxIterations}, cluster Count {clusterCount}, and {geodata.Count} data entries");
                     break;
                 }
-                assignmentsChanged = false;
                 //Calulate which locations fall to the clusters
                 for (int geoDataIndex = 0; geoDataIndex < geoDataPos.Length; geoDataIndex++)
                 {
@@ -126,29 +126,40 @@ namespace WorldCompanyDataViewer.ViewModels
                         {
                             shortestDistance = currentDistance;
                             clusterId = centroidIndex;
-                            if (centroidIdAssignments[geoDataIndex] != clusterId)
-                            {
-                                assignmentsChanged = true;
-                            }
                         }
                     }
                     centroidIdAssignments[geoDataIndex] = clusterId;
                 }//TODO check spread of clusters and maybe restart?
                 //Center clusters
+                //Vector3D?[] newClusterPos = new Vector3D?[clusterCount];
+                bool valueChanged = false;
                 for (int centroidIndex = 0; centroidIndex < centroidsPos.Length; centroidIndex++)
                 {
-                    int[] indexesOfAssignedDistanceData = centroidIdAssignments.Where(x => x == centroidIndex).Select((x, index) => index).ToArray();
+                    int[] indexesOfAssignedDistanceData = centroidIdAssignments
+                        .Select((x, i) => new { Item = x, Index = i })
+                        .Where(x => x.Item == centroidIndex)
+                        .Select(x => x.Index).ToArray();
+
                     IEnumerable<Vector3D> collectionToAverage = geoDataPos
                         .Where((value, index) => indexesOfAssignedDistanceData.Contains(index));
+
                     if (collectionToAverage.Any())
                     {
                         Vector3D average = collectionToAverage.Average();//TODO consider loss of precision or even overflowing - should not be the case with double and 1M entries
-                        centroidsPos[centroidIndex] = average;
+                        if(centroidsPos[centroidIndex] != average)
+                        {
+                            centroidsPos[centroidIndex] = average;
+                            valueChanged = true;
+                        }
                     }
                     else
                     {
                         centroidsPos[centroidIndex] = null;
                     }
+                }
+                if (!valueChanged)
+                {
+                    earlyExit = true;
                 }
             }
             return centroidsPos.Where(x => x != null).Select(x => VectorUtils.CartersianToPolarDegrees(x!.Value)).Select(y => (((decimal)y.X), ((decimal)y.Y))).ToList();
