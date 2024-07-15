@@ -5,18 +5,44 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WorldCompanyDataViewer.Views"
              xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
+             xmlns:customControls="clr-namespace:WorldCompanyDataViewer.CustomControls"
              d:DataContext="{d:DesignInstance Type=viewModels:EmailAnalysisViewModel}"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-            <Label Content="Top 3 Email Domains: "/>
-            <Label Content="l1"/>
-            <Label Content="l2"/>
-            <Label Content="l3"/>
-        </StackPanel>
-        <DataGrid>
+             d:DesignHeight="450" d:DesignWidth="800" d:Background="White">
 
-        </DataGrid>
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center">
+            <Label Content="Top 3 Email Domains: "/>
+            <Label Content="{Binding TopDomain0}"/>
+            <Label Content="{Binding TopDomain1}"/>
+            <Label Content="{Binding TopDomain2}"/>
+        </StackPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <Button Content="Get Top Domains" Command="{Binding UpdateMailDomainsCommand}"/>
+            </StackPanel>
+            <DataGrid Grid.Column="1"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      ItemsSource="{Binding MailDomainData}" 
+                      Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="@Domain" Binding="{Binding MailDomain}" Width="2*"/>
+                    <DataGridTextColumn Header="#Counts" Binding="{Binding Count}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <Grid  Grid.Column="2">
+                <customControls:PieChart ItemsSource="{Binding PieChartEntries}"/>
+            </Grid>
+
+        </Grid>
+
     </DockPanel>
+
+
 </UserControl>

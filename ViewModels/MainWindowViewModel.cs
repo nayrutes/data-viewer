@@ -31,6 +31,7 @@ namespace WorldCompanyDataViewer.ViewModels
         {
             DataViewModel.DataEntryViewSource = value?.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
             PostcodeAnalysisViewModel.DataEntryContext = value;
+            EmailAnalysisViewModel.DataEntryContext = value;
 
         }
 
