@@ -39,6 +39,10 @@ namespace WorldCompanyDataViewer.ViewModels
         private string _topDomain2 = "";
 
 
+        internal void SetNewDatabaseContext(DatabaseContext? value)
+        {
+            DataEntryContext = value;
+        }
 
         [RelayCommand(AllowConcurrentExecutions = false)]
         public async Task UpdateMailDomainsAsync()
@@ -108,6 +112,7 @@ namespace WorldCompanyDataViewer.ViewModels
             };
             PieChartEntries.Add(elseEntry);
         }
+
     }
 
     public struct MailDomainDisplayItems

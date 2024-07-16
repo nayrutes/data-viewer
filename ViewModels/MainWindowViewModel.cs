@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -17,31 +18,15 @@ namespace WorldCompanyDataViewer.ViewModels
         public PostcodeAnalysisViewModel PostcodeAnalysisViewModel { get; }
         public EmailAnalysisViewModel EmailAnalysisViewModel { get; }
         [ObservableProperty]
-        private DatabaseContext? _context;
+        private DatabaseContext _context;
 
         public MainWindowViewModel()
         {
+            Context = new DatabaseContext();
             DataViewModel = new DataViewModel();
-            //PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
-            PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
+            //PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
+            PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             EmailAnalysisViewModel = new EmailAnalysisViewModel();
-
-        }
-
-        partial void OnContextChanged(DatabaseContext? value)
-        {
-            Task.Run(() => OnContextChangedAsync(value));
-        }
-
-        private async Task OnContextChangedAsync(DatabaseContext? value)
-        {
-            if (value != null)
-            {
-                await value.DataEntries.LoadAsync();
-            }
-            DataViewModel.DataEntryViewSource = value?.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
-            PostcodeAnalysisViewModel.DatabaseContext = value;
-            EmailAnalysisViewModel.DataEntryContext = value;
         }
 
         [RelayCommand]
@@ -58,16 +43,32 @@ namespace WorldCompanyDataViewer.ViewModels
             {
                 string filepath = dialog.FileName;
                 Debug.WriteLine($"Selected: {filepath}");
-                Task.Run(() => LoadCsvFile(filepath));
+                Task.Run(() => LoadNewDbContextWithCsv(filepath));
             }
         }
 
-        //TODO catch errors
-        private async Task LoadCsvFile(string filePath)
+        private async Task LoadNewDbContextWithCsv(string filePath)
         {
-            var ctx = new DatabaseContext();
-            await ctx.Database.EnsureDeletedAsync();
-            await ctx.Database.EnsureCreatedAsync();
+            try
+            {
+                await Context.DisposeAsync();
+                var ctx = new DatabaseContext();
+                await ctx.Database.EnsureDeletedAsync();
+                await ctx.Database.EnsureCreatedAsync();
+                await LoadCsvIntoDbContext(filePath, ctx);
+                await ctx.SaveChangesAsync();
+                await SetNewDbContextAsync(ctx);
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine(e.Message);
+                MessageBox.Show(e.Message, nameof(LoadNewDbContextWithCsv), MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
+        }
+
+        private Task LoadCsvIntoDbContext(string filePath, DatabaseContext context)
+        {
             using (var reader = new StreamReader(filePath))
             {
 
@@ -96,26 +97,35 @@ namespace WorldCompanyDataViewer.ViewModels
                         Email = entry[9],
                         Website = entry[10],
                     };
-                    ctx.Add(dataEntry);
+                    context.Add(dataEntry);
                     line = reader.ReadLine();
                 }
             }
-            await ctx.SaveChangesAsync();
-            await SetNewDbContextAsync(ctx);
+            return Task.CompletedTask;
         }
 
-        public async Task SetNewDbContextAsync(DatabaseContext? dataEntryContext = null)
+        public async Task SetNewDbContextAsync(DatabaseContext dataEntryContext)
         {
-            DatabaseContext newContext = dataEntryContext ?? new DatabaseContext();
-            await newContext.Database.EnsureCreatedAsync();
-
-            Context?.Dispose();
-            Context = newContext;
+            try
+            {
+                await dataEntryContext.Database.EnsureCreatedAsync();
+                await Context.DisposeAsync();
+                Context = dataEntryContext;
+                await dataEntryContext.DataEntries.LoadAsync();
+                DataViewModel.DataEntryViewSource = dataEntryContext.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
+                PostcodeAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
+                EmailAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message, nameof(SetNewDbContextAsync), MessageBoxButton.OK, MessageBoxImage.Error);
+                throw;
+            }
         }
 
         internal void Closing()
         {
-            Context?.Dispose();
+            Context.Dispose();
         }
     }
 }

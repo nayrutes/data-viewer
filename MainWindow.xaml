@@ -7,7 +7,7 @@
         xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
         d:DataContext="{d:DesignInstance Type=viewModels:MainWindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800" Loaded="Window_Loaded">
+        Title="MainWindow" Height="700" Width="1200" Loaded="Window_Loaded">
     <DockPanel>
         <ToolBar DockPanel.Dock="Top">
             <Button Command="{Binding LoadCSVCommand}" Content="Load CSV"/>

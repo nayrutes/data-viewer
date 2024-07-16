@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace WorldCompanyDataViewer.Models
 {
@@ -51,6 +46,9 @@ namespace WorldCompanyDataViewer.Models
                     .HasOne<ClusterEntry>()
                     .WithMany()
                     .HasForeignKey("ClusterEntryId"));
+            modelBuilder.Entity<ClusterEntry>()
+                .Navigation(e => e.PostcodeGeodataEntries)
+                .AutoInclude();
 
         }
 

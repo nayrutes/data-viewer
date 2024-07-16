@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using WorldCompanyDataViewer.Models;
 
 namespace WorldCompanyDataViewer.Services
@@ -14,12 +9,14 @@ namespace WorldCompanyDataViewer.Services
     public interface IPostcodeLocationService
     {
         string GetUrl();
+        Task<string> RequestClosestPlace(string postcode);
         Task RequestPostcodeLocationsAsync(List<PostcodeGeodataEntry> postcodes);
     }
 
     public class OnlinePostcodeLocationService : IPostcodeLocationService
     {
         const string path = "https://api.postcodes.io/postcodes?filter=postcode,longitude,latitude";
+        const string pathLoc = "https://api.postcodes.io/postcodes/";
         public string GetUrl()
         {
             return path;
@@ -34,20 +31,16 @@ namespace WorldCompanyDataViewer.Services
             }
             HttpClient client = new HttpClient();
             List<PostcodeGeodataEntry> geodatas = new List<PostcodeGeodataEntry>();
-            //string path = "https://api.postcodes.io/postcodes?filter=postcode,longitude,latitude";
             for (int i = 0; i < postcodes.Count; i += maxBatchsize)
             {
                 var batch = postcodes.Skip(i).Take(maxBatchsize).ToList();
                 await PostcodeApiBatchRequestAsync(client, batch, path);
-                //geodatas.AddRange(batchData);
             }
             client.Dispose();
-            //return geodatas;
         }
 
         private static async Task PostcodeApiBatchRequestAsync(HttpClient httpClient, List<PostcodeGeodataEntry> postcodes, string path)
         {
-            //List<PostcodeGeodataEntry> geodatas = new();
             string json = JsonSerializer.Serialize(new PostcodeRequest(postcodes.Select(x => x.Postcode).ToList()));
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync(path, content);
@@ -56,7 +49,6 @@ namespace WorldCompanyDataViewer.Services
             {
                 try
                 {
-                    //string responseContent = await response.Content.ReadAsStringAsync();
                     PostcodeApiResult apiResult = await response.Content.ReadFromJsonAsync<PostcodeApiResult>();
                     //TODO properly handle terminated codes and codes with incomplete information (ex: "BN27 1AJ")
                     for (int i = 0; i < apiResult.result.Count; i++)
@@ -74,7 +66,6 @@ namespace WorldCompanyDataViewer.Services
                         }
 
                     }
-                    //geodatas.AddRange(apiResult.result.Where(x => x.result != null).Select(x => new PostcodeGeodataEntry(x.result.postcode, x.result.longitude, x.result.latitude)));
                 }
                 catch (NotSupportedException) // When content type is not valid
                 {
@@ -86,9 +77,43 @@ namespace WorldCompanyDataViewer.Services
                 }
             }
 
-            //return geodatas;
         }
 
+        public async Task<string> RequestClosestPlace(string postcode)
+        {
+            HttpClient client = new HttpClient();
+            HttpResponseMessage response = await client.GetAsync($"{pathLoc}" + postcode);
+            string result = "";
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+                const string propertyName = "admin_district";
+
+                using (JsonDocument doc = JsonDocument.Parse(responseBody))
+                {
+                    JsonElement root = doc.RootElement;
+
+                    // Navigate through the JSON structure
+                    if (root.TryGetProperty("result", out JsonElement resultElement) &&
+                    resultElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (resultElement.TryGetProperty(propertyName, out JsonElement prop1Value))
+                        {
+                            result = prop1Value.ToString();
+                        }
+                        else
+                        {
+                            throw new JsonException($"Property {propertyName} not found.");
+                        }
+                    }
+                    else
+                    {
+                        throw new JsonException("Property 'result' not found or is not an array.");
+                    }
+                }
+            }
+            return result;
+        }
     }
 
     public class TestDataPostcodeLocationService : IPostcodeLocationService
@@ -96,6 +121,11 @@ namespace WorldCompanyDataViewer.Services
         public string GetUrl()
         {
             return "<<Local Test Data Set with 6 entries>>";
+        }
+
+        public Task<string> RequestClosestPlace(string postcode)
+        {
+            return Task.FromResult("TestTown");
         }
 
         public Task RequestPostcodeLocationsAsync(List<PostcodeGeodataEntry> postcodes)
@@ -142,15 +172,6 @@ namespace WorldCompanyDataViewer.Services
                 }
 
             }
-
-            //postcodes.AddRange(new List<PostcodeGeodataEntry> {
-            //    new PostcodeGeodataEntry("AB25 3UZ", -2.10764m, 57.154592m),//"AB25 3UZ";-2,10764;57,154592
-            //    new PostcodeGeodataEntry("B75 6HJ", -1.799339m, 52.574142m),//"B75 6HJ";-1,799339;52,574142
-            //    new PostcodeGeodataEntry("EH49 7LS", -3.560637m, 55.982662m),//"EH49 7LS";-3,560637;55,982662
-            //    new PostcodeGeodataEntry("FY8 3TF", -3.008877m, 53.753436m),//"FY8 3TF";-3,008877;53,753436
-            //    new PostcodeGeodataEntry("HP21 8PP", -0.828588m, 51.80657m),//"HP21 8PP";-0,828588;51,80657
-            //    new PostcodeGeodataEntry("TN22 9EF", 0.086443m, 50.967863m),//"TN22 9EF";0,086443;50,967863
-            //});
             return Task.CompletedTask;
         }
     }

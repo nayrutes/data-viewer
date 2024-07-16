@@ -63,7 +63,8 @@
                         <DataGrid Grid.Column="0"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
-                              ItemsSource="{Binding ClusterBindingList}" 
+                              ItemsSource="{Binding ClustersCollection}"
+                              SelectedItem="{Binding SelectetClusterViewModel}" 
                               RowDetailsVisibilityMode="VisibleWhenSelected">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Cluster ID" Binding="{Binding Id}" Width="70"/>
@@ -76,15 +77,32 @@
                                 <!--<DataGridTextColumn Header="Inspect" Binding="{Binding ?}" Width="50"/>-->
                             </DataGrid.Columns>
                         </DataGrid>
-                        <DockPanel Grid.Column="1">
+                        <DockPanel Grid.Column="1" DataContext="{Binding SelecterClusterViewModel}">
                             <!--TODO Bind DetailView to datagrid selection-->
-                            <Label DockPanel.Dock="Top" Content="Detail View of ..."/>
-                            <Label DockPanel.Dock="Top" Content="Bla"/>
-                            <Label DockPanel.Dock="Top" Content="Bla"/>
+                            <Label DockPanel.Dock="Top" Content="Cluster Detail View"/>
+                            <!--<Grid DockPanel.Dock="Top" >
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="100"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Label Grid.Column="0" Content="Id:" HorizontalAlignment="Right"/>
+                                <Label Grid.Column="1" Content="{Binding Id}"/>
+                            </Grid>-->
+                            <local:LabeledProperty LabelText="Cluster Id" Content="{Binding Id}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding PeopleCount}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding PostcodeCount}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding ClostestPostcode}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding ClostestTown}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding Longitude}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty Content="{Binding Latitude}"  DockPanel.Dock="Top"/>
                             <Label DockPanel.Dock="Top" Content="People" HorizontalAlignment="Center"/>
                             <!--TODO link content of this datagrid to slection and people of other datagrid-->
-                            <DataGrid>
 
+                            <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
+                                EnableRowVirtualization="True"
+                                IsReadOnly="True"
+                                ItemsSource="{Binding PersonCollection}" 
+                                Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">
                             </DataGrid>
                         </DockPanel>
                     </Grid>
