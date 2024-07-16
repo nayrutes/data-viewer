@@ -77,7 +77,7 @@
                                 <!--<DataGridTextColumn Header="Inspect" Binding="{Binding ?}" Width="50"/>-->
                             </DataGrid.Columns>
                         </DataGrid>
-                        <DockPanel Grid.Column="1" DataContext="{Binding SelecterClusterViewModel}">
+                        <DockPanel Grid.Column="1" DataContext="{Binding SelectetClusterViewModel}">
                             <!--TODO Bind DetailView to datagrid selection-->
                             <Label DockPanel.Dock="Top" Content="Cluster Detail View"/>
                             <!--<Grid DockPanel.Dock="Top" >
