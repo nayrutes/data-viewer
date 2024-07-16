@@ -90,7 +90,7 @@ namespace WorldCompanyDataViewer.ViewModels
                         CompanyName = entry[2],
                         Address = entry[3],
                         City = entry[4],
-                        Country = entry[5],
+                        County = entry[5],
                         Postal = entry[6],
                         Phone1 = entry[7],
                         Phone2 = entry[8],

@@ -125,7 +125,7 @@ namespace WorldCompanyDataViewer.Services
 
         public Task<string> RequestClosestPlace(string postcode)
         {
-            return Task.FromResult("TestTown");
+            return Task.FromResult("Test admin district");
         }
 
         public Task RequestPostcodeLocationsAsync(List<PostcodeGeodataEntry> postcodes)

@@ -38,6 +38,13 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private ClusterEntryViewModel? _selectetClusterViewModel;
 
+        [ObservableProperty]
+        private int _validPostcodesCount;
+        [ObservableProperty]
+        private int _notValidPostcodesCount;
+        [ObservableProperty]
+        private ObservableCollection<DataEntry> _invalidPostcodePeople;
+
         public PostcodeAnalysisViewModel()
         {
             this.DatabaseContext = new DatabaseContext();
@@ -72,7 +79,7 @@ namespace WorldCompanyDataViewer.ViewModels
                 context.ChangeTracker.Tracked += OnContextCheckTracker_Tracked; //Do not usubscribe the old context as it is already disposed!
                 context.ChangeTracker.StateChanged += OnContextCheckTracker_StateChanged; //Do not usubscribe the old context as it is already disposed!
             }
-
+            Task.Run(() => UpdateGeolocationInfosAsync());
         }
 
         //TODO think of a better way to keep db table and viewmodel collection in sync
@@ -120,6 +127,23 @@ namespace WorldCompanyDataViewer.ViewModels
             }
         }
 
+        private async Task UpdateGeolocationInfosAsync()
+        {
+            //DatabaseContext.PostcodeGeodataEntries.
+
+            IQueryable<DataEntry> data =
+                from x in DatabaseContext.DataEntries
+                join z in DatabaseContext.PostcodeGeodataEntries on x.Postal equals z.Postcode
+                where z.IsNotAvailable == true
+                select x;
+
+            InvalidPostcodePeople = new ObservableCollection<DataEntry>(await data.ToListAsync());
+
+            NotValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.Where(x => x.IsNotAvailable).CountAsync();
+
+            ValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.CountAsync() - NotValidPostcodesCount;
+
+    }
 
 
 
@@ -185,7 +209,7 @@ namespace WorldCompanyDataViewer.ViewModels
                 await postcodeLocationService.RequestPostcodeLocationsAsync(toFetch);
                 DatabaseContext.PostcodeGeodataEntries.UpdateRange(toFetch);
                 await DatabaseContext.SaveChangesAsync();
-
+                await UpdateGeolocationInfosAsync();
                 StatusText = $"Done! (Fetching Geolocations from {postcodeLocationService.GetUrl()})";
             }
             catch (DatabaseConextNullException)

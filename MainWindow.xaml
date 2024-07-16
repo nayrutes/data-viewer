@@ -16,10 +16,10 @@
             <TabItem Header="Main Data View">
                 <views:MainDataView DataContext="{Binding DataViewModel}"/>
             </TabItem>
-            <TabItem Header="Email Domains">
+            <TabItem Header="Email Domains Analysis">
                 <views:EmailAnalysisView DataContext="{Binding EmailAnalysisViewModel}"/>
             </TabItem>
-            <TabItem Header="Geodata">
+            <TabItem Header="Postcode Analysis">
                 <views:PostcodeAnalysisView DataContext="{Binding PostcodeAnalysisViewModel}"/>
             </TabItem>
         </TabControl>

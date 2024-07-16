@@ -39,20 +39,39 @@
                 <Button Content="FindClusters" Command="{Binding AnalyzePostcodesCommand}"/>
             </StackPanel>
             <TabControl Grid.Column="1">
-                <TabItem Header="Geodata">
-                    <DataGrid Grid.Column="1"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          ItemsSource="{Binding PostcodesCollection}" 
-                          RowDetailsVisibilityMode="VisibleWhenSelected">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Postcode" Binding="{Binding Postcode}" Width="*"/>
-                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="*"/>
-                            <DataGridTextColumn Header="Longitude" Binding="{Binding Longitude}" Width="*"/>
-                            <DataGridTextColumn Header="Latitude" Binding="{Binding Latitude}" Width="*"/>
-                            <DataGridTextColumn Header="IsNotAvailable" Binding="{Binding IsNotAvailable}" Width="*"/>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                <TabItem Header="Postcode Geodata">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <DataGrid Grid.Column="0"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              ItemsSource="{Binding PostcodesCollection}" 
+                              RowDetailsVisibilityMode="VisibleWhenSelected">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Postcode" Binding="{Binding Postcode}" Width="*"/>
+                                <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="*"/>
+                                <DataGridTextColumn Header="Longitude" Binding="{Binding Longitude}" Width="*"/>
+                                <DataGridTextColumn Header="Latitude" Binding="{Binding Latitude}" Width="*"/>
+                                <DataGridTextColumn Header="IsNotAvailable" Binding="{Binding IsNotAvailable}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DockPanel Grid.Column="1">
+                            <Label DockPanel.Dock="Top" Content="Postcode Geodata Overview" HorizontalAlignment="Center"/>
+                            <local:LabeledProperty LabelText="# valid postcodes" Content="{Binding ValidPostcodesCount}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty LabelText="# invalid postcodes" Content="{Binding NotValidPostcodesCount}"  DockPanel.Dock="Top"/>
+                            <Label DockPanel.Dock="Top" Content="People with invalid code" HorizontalAlignment="Center"/>
+
+                            <DataGrid AutoGenerateColumns="True"
+                                EnableRowVirtualization="True"
+                                IsReadOnly="True"
+                                ItemsSource="{Binding InvalidPostcodePeople}" 
+                                Margin="3,3,3,3"  RowDetailsVisibilityMode="VisibleWhenSelected">    
+                            </DataGrid>
+                        </DockPanel>
+                    </Grid>
                 </TabItem>
                 <TabItem Header="Clusters">
                     <Grid>
@@ -71,38 +90,28 @@
                                 <DataGridTextColumn Header="Amount of People" Binding="{Binding PeopleCount}" Width="*"/>
                                 <DataGridTextColumn Header="Amount of Postcodes" Binding="{Binding PostcodeCount}" Width="*"/>
                                 <DataGridTextColumn Header="Clostest Postcode" Binding="{Binding ClostestPostcode}" Width="*"/>
-                                <DataGridTextColumn Header="Clostest Town" Binding="{Binding ClostestTown}" Width="*"/>
+                                <DataGridTextColumn Header="Admin District" Binding="{Binding ClostestTown}" Width="*"/>
                                 <DataGridTextColumn Header="Longitude" Binding="{Binding Longitude}" Width="70"/>
                                 <DataGridTextColumn Header="Latitude" Binding="{Binding Latitude}" Width="70"/>
                                 <!--<DataGridTextColumn Header="Inspect" Binding="{Binding ?}" Width="50"/>-->
                             </DataGrid.Columns>
                         </DataGrid>
                         <DockPanel Grid.Column="1" DataContext="{Binding SelectetClusterViewModel}">
-                            <!--TODO Bind DetailView to datagrid selection-->
                             <Label DockPanel.Dock="Top" Content="Cluster Detail View"/>
-                            <!--<Grid DockPanel.Dock="Top" >
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="100"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Label Grid.Column="0" Content="Id:" HorizontalAlignment="Right"/>
-                                <Label Grid.Column="1" Content="{Binding Id}"/>
-                            </Grid>-->
                             <local:LabeledProperty LabelText="Cluster Id" Content="{Binding Id}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding PeopleCount}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding PostcodeCount}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding ClostestPostcode}"  DockPanel.Dock="Top"/>
-                            <local:LabeledProperty Content="{Binding ClostestTown}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty LabelText="Closest County" Content="{Binding ClostestTown}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding Longitude}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding Latitude}"  DockPanel.Dock="Top"/>
-                            <Label DockPanel.Dock="Top" Content="People" HorizontalAlignment="Center"/>
-                            <!--TODO link content of this datagrid to slection and people of other datagrid-->
+                            <Label DockPanel.Dock="Top" Content="People in cluster" HorizontalAlignment="Center"/>
 
-                            <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
+                            <DataGrid AutoGenerateColumns="True"
                                 EnableRowVirtualization="True"
                                 IsReadOnly="True"
                                 ItemsSource="{Binding PersonCollection}" 
-                                Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">
+                                Margin="3,3,3,3" RowDetailsVisibilityMode="VisibleWhenSelected">
                             </DataGrid>
                         </DockPanel>
                     </Grid>
