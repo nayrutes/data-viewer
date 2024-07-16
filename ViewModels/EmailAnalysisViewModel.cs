@@ -19,7 +19,7 @@ namespace WorldCompanyDataViewer.ViewModels
 {
     public partial class EmailAnalysisViewModel : ObservableObject
     {
-        public DataEntryContext? DataEntryContext { get; set; }
+        public DatabaseContext? DataEntryContext { get; set; }
 
         [ObservableProperty]
         private ObservableCollection<MailDomainDisplayItems> _mailDomainData = new();

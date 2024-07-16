@@ -13,12 +13,11 @@ namespace WorldCompanyDataViewer.Utils
     /// </summary>
     public static class HaversineDistance
     {
-        const double PIx = 3.141592653589793;
         const double RADIUS = 6378.16;
 
         public static double Radians(double x)
         {
-            return x * PIx / 180;
+            return x * Math.PI / 180;
         }
 
         public static double DistanceBetweenPlaces(double lon1, double lat1, double lon2, double lat2)

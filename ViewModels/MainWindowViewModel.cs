@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -16,23 +17,31 @@ namespace WorldCompanyDataViewer.ViewModels
         public PostcodeAnalysisViewModel PostcodeAnalysisViewModel { get; }
         public EmailAnalysisViewModel EmailAnalysisViewModel { get; }
         [ObservableProperty]
-        private DataEntryContext? _context;
+        private DatabaseContext? _context;
 
         public MainWindowViewModel()
         {
             DataViewModel = new DataViewModel();
-            PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
-            //_postcodeAnalysis = new PostcodeAnalysis(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
+            //PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
+            PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService());//Consider using Dependency Injection to configure and simplify setup
             EmailAnalysisViewModel = new EmailAnalysisViewModel();
 
         }
 
-        partial void OnContextChanged(DataEntryContext? value)
+        partial void OnContextChanged(DatabaseContext? value)
         {
-            DataViewModel.DataEntryViewSource = value?.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
-            PostcodeAnalysisViewModel.DataEntryContext = value;
-            EmailAnalysisViewModel.DataEntryContext = value;
+            Task.Run(() => OnContextChangedAsync(value));
+        }
 
+        private async Task OnContextChangedAsync(DatabaseContext? value)
+        {
+            if (value != null)
+            {
+                await value.DataEntries.LoadAsync();
+            }
+            DataViewModel.DataEntryViewSource = value?.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
+            PostcodeAnalysisViewModel.DatabaseContext = value;
+            EmailAnalysisViewModel.DataEntryContext = value;
         }
 
         [RelayCommand]
@@ -56,7 +65,7 @@ namespace WorldCompanyDataViewer.ViewModels
         //TODO catch errors
         private async Task LoadCsvFile(string filePath)
         {
-            var ctx = new DataEntryContext();
+            var ctx = new DatabaseContext();
             await ctx.Database.EnsureDeletedAsync();
             await ctx.Database.EnsureCreatedAsync();
             using (var reader = new StreamReader(filePath))
@@ -92,14 +101,13 @@ namespace WorldCompanyDataViewer.ViewModels
                 }
             }
             await ctx.SaveChangesAsync();
-            await LoadContextAsync(ctx);
+            await SetNewDbContextAsync(ctx);
         }
 
-        public async Task LoadContextAsync(DataEntryContext? dataEntryContext = null)
+        public async Task SetNewDbContextAsync(DatabaseContext? dataEntryContext = null)
         {
-            DataEntryContext newContext = dataEntryContext ?? new DataEntryContext();
+            DatabaseContext newContext = dataEntryContext ?? new DatabaseContext();
             await newContext.Database.EnsureCreatedAsync();
-            await newContext.DataEntries.LoadAsync();
 
             Context?.Dispose();
             Context = newContext;

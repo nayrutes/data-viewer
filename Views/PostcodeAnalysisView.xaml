@@ -7,31 +7,90 @@
              xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
              d:DataContext="{d:DesignInstance Type=viewModels:PostcodeAnalysisViewModel}"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800" d:Background="White">
     <DockPanel>
-        <TextBox x:Name="AnalysisStatusLabel" Text="{Binding StatusText}" DockPanel.Dock="Top" Height="40">
-            <TextBox.Style>
-                <Style TargetType="TextBox">
-                    <Setter Property="IsReadOnly" Value="True" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="TextWrapping" Value="Wrap" />
-                </Style>
-            </TextBox.Style>
-        </TextBox>
+        <DockPanel DockPanel.Dock="Top" Height="40">
+            <Label Content="Status: " VerticalAlignment="Center"/>
+            <TextBox x:Name="AnalysisStatusLabel" Text="{Binding StatusText}" VerticalContentAlignment="Center" TextWrapping="Wrap">
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="IsReadOnly" Value="True" />
+                        <Setter Property="BorderThickness" Value="0" />
+                        <Setter Property="TextWrapping" Value="Wrap" />
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+        </DockPanel>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="150"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
+                <Decorator Height="20"/>
+                <Button Content="Analyze Data" Command="{Binding AnalayzeDataForPostCodesCommand}"/>
+                <DockPanel Margin="2,2,2,2">
+                    <Label Content="Clusters #:"/>
+                    <TextBox PreviewTextInput="IntegerValidation" Text="{Binding ClusterCount}"  Margin="2,2,2,2" HorizontalAlignment="Stretch"/>
+                </DockPanel>
+                <Decorator Height="30"/>
+                <Button Content="Get Postcodes from Data" Command="{Binding AddOrUpdatePostcodesWithCountFromPersonDataCommand}"/>
                 <Button Content="Fetch Geolocations" Command="{Binding FetchGeolocationDataCommand}"/>
-                <Label Content="Cluster count:"/>
-                <TextBox/>
                 <Button Content="FindClusters" Command="{Binding AnalyzePostcodesCommand}"/>
             </StackPanel>
-            <DataGrid Grid.Column="1">
+            <TabControl Grid.Column="1">
+                <TabItem Header="Geodata">
+                    <DataGrid Grid.Column="1"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          ItemsSource="{Binding PostcodesCollection}" 
+                          RowDetailsVisibilityMode="VisibleWhenSelected">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Postcode" Binding="{Binding Postcode}" Width="*"/>
+                            <DataGridTextColumn Header="Count" Binding="{Binding Count}" Width="*"/>
+                            <DataGridTextColumn Header="Longitude" Binding="{Binding Longitude}" Width="*"/>
+                            <DataGridTextColumn Header="Latitude" Binding="{Binding Latitude}" Width="*"/>
+                            <DataGridTextColumn Header="IsNotAvailable" Binding="{Binding IsNotAvailable}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </TabItem>
+                <TabItem Header="Clusters">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <DataGrid Grid.Column="0"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              ItemsSource="{Binding ClusterBindingList}" 
+                              RowDetailsVisibilityMode="VisibleWhenSelected">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Cluster ID" Binding="{Binding Id}" Width="70"/>
+                                <DataGridTextColumn Header="Amount of People" Binding="{Binding PeopleCount}" Width="*"/>
+                                <DataGridTextColumn Header="Amount of Postcodes" Binding="{Binding PostcodeCount}" Width="*"/>
+                                <DataGridTextColumn Header="Clostest Postcode" Binding="{Binding ClostestPostcode}" Width="*"/>
+                                <DataGridTextColumn Header="Clostest Town" Binding="{Binding ClostestTown}" Width="*"/>
+                                <DataGridTextColumn Header="Longitude" Binding="{Binding Longitude}" Width="70"/>
+                                <DataGridTextColumn Header="Latitude" Binding="{Binding Latitude}" Width="70"/>
+                                <!--<DataGridTextColumn Header="Inspect" Binding="{Binding ?}" Width="50"/>-->
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <DockPanel Grid.Column="1">
+                            <!--TODO Bind DetailView to datagrid selection-->
+                            <Label DockPanel.Dock="Top" Content="Detail View of ..."/>
+                            <Label DockPanel.Dock="Top" Content="Bla"/>
+                            <Label DockPanel.Dock="Top" Content="Bla"/>
+                            <Label DockPanel.Dock="Top" Content="People" HorizontalAlignment="Center"/>
+                            <!--TODO link content of this datagrid to slection and people of other datagrid-->
+                            <DataGrid>
 
-            </DataGrid>
+                            </DataGrid>
+                        </DockPanel>
+                    </Grid>
+
+                </TabItem>
+            </TabControl>
         </Grid>
     </DockPanel>
 </UserControl>

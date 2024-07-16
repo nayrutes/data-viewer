@@ -1,5 +1,11 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Media3D;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,14 +18,22 @@ namespace WorldCompanyDataViewer.ViewModels
 {
     public partial class PostcodeAnalysisViewModel : ObservableObject
     {
-        public DataEntryContext? DataEntryContext { get; set; }
+        [ObservableProperty]
+        public DatabaseContext? _databaseContext;
         public readonly IPostcodeLocationService postcodeLocationService;
 
         [ObservableProperty]
         private string _statusText = "Data Analysis Status - Not Started";
+        [ObservableProperty]
+        private int _clusterCount = 5;
+        [ObservableProperty]
+        private int _clusterIterations = 25;
+        [ObservableProperty]
+        private ObservableCollection<ClusterEntry> _clusterBindingList = new();
+        [ObservableProperty]
+        private ObservableCollection<PostcodeGeodataEntry> _postcodesCollection = new();
 
-        private List<PostcodeGeodata> _postcodeLocations = new();
-        Dictionary<string, int> _postcodesCounts = new();
+        //Dictionary<string, int> _postcodesCounts = new();
 
         public PostcodeAnalysisViewModel()
         {
@@ -31,70 +45,116 @@ namespace WorldCompanyDataViewer.ViewModels
             this.postcodeLocationService = postcodeLocationService;
         }
 
-        [RelayCommand]
-        public async Task FetchGeolocationDataAsync()
+        partial void OnDatabaseContextChanged(DatabaseContext? value)
         {
-            if (DataEntryContext == null)
+            Task.Run(() => OnDatabaseContextChangedAsync(value));
+        }
+
+        private async Task OnDatabaseContextChangedAsync(DatabaseContext? context)
+        {
+            if (context != null)
             {
-                Debug.WriteLine("Datacontext was null when calling FetchGeolocationData");
+                await context.ClusterEntries.LoadAsync();
+                await context.PostcodeGeodataEntries.LoadAsync();
+            }
+            PostcodesCollection = context?.PostcodeGeodataEntries.Local.ToObservableCollection() ?? new();
+            ClusterBindingList = context?.ClusterEntries.Local.ToObservableCollection() ?? new();
+        }
+
+        [RelayCommand]
+        public async Task AnalayzeDataForPostCodesAsync()
+        {
+            await AddOrUpdatePostcodesWithCountFromPersonDataAsync();
+            await FetchGeolocationDataAsync();
+            await AnalyzePostcodesAsync();
+        }
+
+        [RelayCommand]
+        public async Task AddOrUpdatePostcodesWithCountFromPersonDataAsync()
+        {
+            if (DatabaseContext == null)
+            {
+                Debug.WriteLine("Datacontext was null when calling GetPostcodesWithCountFromPersonData");
                 return;
             }
-            _postcodesCounts = await GetAllPostCodesWithCountAsync(DataEntryContext);
-            _postcodeLocations = await postcodeLocationService.RequestPostcodeLocationsAsync(_postcodesCounts.Keys.ToList());
-        }
+            StatusText = $"Getting Postcodes from Person-Data";
 
-        [RelayCommand]
-        public async Task<List<(decimal, decimal)>> AnalyzePostcodesAsync(DataEntryContext context)
-        {
-            if (DataEntryContext == null)
-            {
-                Debug.WriteLine("Datacontext was null when calling AnalyzePostcodes");
-                return new();
-            }
-            int clusterCount = 3;
-            StatusText = $"Running KMeans Clustering with {clusterCount} clusters on {_postcodeLocations.Count} datapoints";
-            //TODO fetch geolocations if not available or not up to date
-            List<(decimal, decimal)> clusters = await Task.Run(() => KMeansClustering(clusterCount, _postcodeLocations, 20));
-            string clusterText = "";
-            foreach (var cluster in clusters)
-            {
-                clusterText += $"({cluster.Item1},{cluster.Item2})";
-            }
-            StatusText = $"Found {clusters.Count} at (lon,lat): {clusterText}";
-            return clusters;
-        }
-
-        private async Task<Dictionary<string, int>> GetAllPostCodesWithCountAsync(DataEntryContext context)
-        {
-            if (DataEntryContext == null)
-            {
-                Debug.WriteLine("Datacontext was null when calling GetAllPostCodesWithCount");
-                return new();
-            }
-            Dictionary<string, int> result = await context.DataEntries.GroupBy(t => t.Postal)
+            List<PostcodeGeodataEntry> fromPerson = await DatabaseContext.DataEntries.GroupBy(t => t.Postal)
                 .Select(g => new
                 {
                     Value = g.Key,
                     Count = g.Count()
-                }).ToDictionaryAsync(x => x.Value!, x => x.Count);
-            return result;
+                }).Select(x => new PostcodeGeodataEntry()
+                {
+                    Postcode = x.Value,
+                    Count = x.Count
+                }).ToListAsync();
+
+            //TODO rewrite to used AddRangeAsync
+            foreach (var item in fromPerson)
+            {
+                var entry = DatabaseContext.PostcodeGeodataEntries.Local.FirstOrDefault(x => x.Postcode == item.Postcode);
+                if (entry != null)
+                {
+                    entry.Count = item.Count;
+                }
+                else
+                {
+                    await DatabaseContext.PostcodeGeodataEntries.AddAsync(item);
+                }
+            }
+            await DatabaseContext.SaveChangesAsync();
+
+            StatusText = $"Done! (Getting Postcodes from Person-Data)";
+        }
+
+        [RelayCommand]
+        public async Task FetchGeolocationDataAsync()
+        {
+            if (DatabaseContext == null)
+            {
+                Debug.WriteLine("Datacontext was null when calling FetchGeolocationData");
+                return;
+            }
+            StatusText = $"Fetching Geolocations from {postcodeLocationService.GetUrl()}";
+
+            List<PostcodeGeodataEntry> toFetch = DatabaseContext.PostcodeGeodataEntries.Local.ToList();
+            await postcodeLocationService.RequestPostcodeLocationsAsync(toFetch);
+            DatabaseContext.PostcodeGeodataEntries.UpdateRange(toFetch);
+            await DatabaseContext.SaveChangesAsync();
+
+            StatusText = $"Done! (Fetching Geolocations from {postcodeLocationService.GetUrl()})";
+        }
+
+        [RelayCommand]
+        public async Task AnalyzePostcodesAsync()
+        {
+            if (DatabaseContext == null)
+            {
+                Debug.WriteLine("Datacontext was null when calling AnalyzePostcodes");
+                return;
+            }
+            StatusText = $"Running KMeans Clustering with {ClusterCount} clusters on {PostcodesCollection.Count} datapoints";
+
+            List<PostcodeGeodataEntry> availablePostcodeLocations = DatabaseContext.PostcodeGeodataEntries.Local
+                .Where(x => x.IsNotAvailable == false)
+                .ToList();
+
+            List<ClusterEntry> clusters = await Task.Run(() => KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations));
+            await DatabaseContext.ClusterEntries.AddRangeAsync(clusters);
+            await DatabaseContext.SaveChangesAsync();
+
+            StatusText = $"Found {clusters.Count} clusters";
         }
 
 
-        //TODO investigate if inaccuracy of Haversine Distance matters (assumption the earth is a spehere and not an ellipoid)
-        //public static double DistanceBetweenGeodata(PostcodeGeodata d1, PostcodeGeodata d2)
-        //{
-        //    return HaversineDistance.DistanceBetweenPlaces(decimal.ToDouble(d1.Longitude), decimal.ToDouble(d1.Latitude), decimal.ToDouble(d2.Longitude), decimal.ToDouble(d2.Latitude));
-        //}
-
-        //TODO use weighted postcodes
         //TODO consider using System.Numerics.Vector3 with float precision for faster calculation or decimal for more accuaracy
         //TODO use uint when applicable
         //TODO consider directly using database for large data sets (e.g. save cartesian data there as well as cluster ids)
         //TODO consider using KMeans algorithm optimized for large data sets (e.g. batched KMeans)
-        //calculate using 3D Cartesian Coordinates to prevent problem e.g. at poles
+        //calculated using 3D Cartesian Coordinates to prevent problem e.g. at poles
         //https://gis.stackexchange.com/questions/7555/computing-an-averaged-latitude-and-longitude-coordinates
-        private static List<(decimal, decimal)> KMeansClustering(int clusterCount, List<PostcodeGeodata> geodata, int maxIterations)
+        private static List<ClusterEntry> KMeansClustering(int clusterCount, List<PostcodeGeodataEntry> geodata, int maxIterations)
         {
             if (clusterCount <= 0 || clusterCount > geodata.Count) { throw new ArgumentException($"cluster count must be larger than 0 and smaller or equal than the count of datapoints"); }
             Vector3D?[] centroidsPos = new Vector3D?[clusterCount];
@@ -162,9 +222,13 @@ namespace WorldCompanyDataViewer.ViewModels
                     IEnumerable<Vector3D> collectionToAverage = geoDataPos
                         .Where((value, index) => indexesOfAssignedDistanceData.Contains(index));
 
+                    IEnumerable<double> weights = geodata
+                        .Where((value, index) => indexesOfAssignedDistanceData.Contains(index))
+                        .Select(x => (double)x.Count);
+
                     if (collectionToAverage.Any())
                     {
-                        Vector3D average = collectionToAverage.Average();//TODO consider loss of precision or even overflowing - should not be the case with double and 1M entries
+                        Vector3D average = collectionToAverage.Average(weights);//TODO consider loss of precision or even overflowing - should not be the case with double and 1M entries
                         if (centroidsPos[centroidIndex] != average)
                         {
                             centroidsPos[centroidIndex] = average;
@@ -181,7 +245,55 @@ namespace WorldCompanyDataViewer.ViewModels
                     earlyExit = true;
                 }
             }
-            return centroidsPos.Where(x => x != null).Select(x => VectorUtils.CartersianToPolarDegrees(x!.Value)).Select(y => (((decimal)y.X), ((decimal)y.Y))).ToList();
+
+            //Assigning of results
+            List<ClusterEntry> results = new List<ClusterEntry>();
+            for (int centroidIndex = 0; centroidIndex < centroidsPos.Length; centroidIndex++)
+            {
+                if (centroidsPos[centroidIndex] == null)
+                {
+                    continue;
+                }
+                Vector3D cp = centroidsPos[centroidIndex]!.Value;
+
+                int[] indexesOfAssignedDistanceData = centroidIdAssignments
+                    .Select((x, i) => new { Item = x, Index = i })
+                    .Where(x => x.Item == centroidIndex)
+                    .Select(x => x.Index).ToArray();
+
+                List<PostcodeGeodataEntry> postcodeGeodataEntries = indexesOfAssignedDistanceData.Select(index => geodata[index]).ToList();
+                List<(Vector3D, int)> postcodeGeodataPositions = indexesOfAssignedDistanceData.Select(index => (geoDataPos[index], index)).ToList();
+                //int indexShortest = postcodeGeodataPositions.MinBy((x,y)=>x.Item1<y.Item1)).S
+                double shortestDistance = double.MaxValue;
+                int shortestDistanceIndex = -1;
+                for (int geoDataIndex = 0; geoDataIndex < geoDataPos.Length; geoDataIndex++)
+                {
+                    double currentDistance = geoDataPos[geoDataIndex].DistanceSq(centroidsPos[centroidIndex]!.Value);
+                    if (currentDistance < shortestDistance)
+                    {
+                        shortestDistance = currentDistance;
+                        shortestDistanceIndex = geoDataIndex;
+                    }
+                }
+
+                var cluster = new ClusterEntry()
+                {
+                    Longitude = (decimal)cp.X,
+                    Latitude = (decimal)cp.Y,
+                    PostcodeGeodataEntries = new ObservableCollection<PostcodeGeodataEntry>(postcodeGeodataEntries),
+                    ClostestPostcode = geodata[shortestDistanceIndex].Postcode
+                };
+                results.Add(cluster);
+            }
+
+
+            //var clusterResults = centroidsPos.Where(x => x != null).Select(x => VectorUtils.CartersianToPolarDegrees(x!.Value)).Select(v => (new ClusterEntry()
+            //{
+            //    Longitude = (decimal)v.X,
+            //    Latitude = (decimal)v.Y,
+            //})).ToList();
+            return results;
+
         }
 
 

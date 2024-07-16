@@ -16,7 +16,7 @@ namespace WorldCompanyDataViewer
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             //Autoload DB content
-            Task.Run(() => MainWindowViewModel.LoadContextAsync());
+            Task.Run(() => MainWindowViewModel.SetNewDbContextAsync());
         }
 
         protected override void OnClosing(CancelEventArgs e)

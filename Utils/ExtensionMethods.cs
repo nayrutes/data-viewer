@@ -45,5 +45,29 @@ namespace WorldCompanyDataViewer.Utils
 
             return new Vector3D(sumX / count, sumY / count, sumZ / count);
         }
+
+        public static Vector3D Average(this IEnumerable<Vector3D> vectors, IEnumerable<double> weights)
+        {
+            if (vectors == null || !vectors.Any())
+            {
+                throw new InvalidOperationException("Cannot compute the average of an empty collection.");
+            }
+
+
+            double sumX = 0;
+            double sumY = 0;
+            double sumZ = 0;
+            double weightedCount = 0;
+
+            foreach (var (vector, weight) in vectors.Zip(weights, (v, w) => (v, w)))
+            {
+                sumX += vector.X * weight;
+                sumY += vector.Y * weight;
+                sumZ += vector.Z * weight;
+                weightedCount += 1 * weight;
+            }
+
+            return new Vector3D(sumX / weightedCount, sumY / weightedCount, sumZ / weightedCount);
+        }
     }
 }
