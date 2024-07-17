@@ -51,17 +51,17 @@ namespace WorldCompanyDataViewer.Services
                 {
                     PostcodeApiResult apiResult = await response.Content.ReadFromJsonAsync<PostcodeApiResult>();
                     //TODO properly handle terminated codes and codes with incomplete information (ex: "BN27 1AJ")
-                    for (int i = 0; i < apiResult.Result.Count; i++)
+                    for (int i = 0; i < apiResult.result.Count; i++)
                     {
-                        var r = apiResult.Result[i].Result;
+                        var r = apiResult.result[i].result;
                         if (r == null)
                         {
                             postcodes[i].IsNotAvailable = true;
                         }
                         else
                         {
-                            postcodes[i].Longitude = r.Longitude;
-                            postcodes[i].Latitude = r.Latitude;
+                            postcodes[i].Longitude = r.longitude;
+                            postcodes[i].Latitude = r.latitude;
                             postcodes[i].IsNotAvailable = false;
                         }
 
@@ -75,6 +75,10 @@ namespace WorldCompanyDataViewer.Services
                 {
                     Console.WriteLine("Invalid JSON.");
                 }
+            }
+            else
+            {
+                throw new HttpRequestException(HttpRequestError.InvalidResponse, "Api request not successful", statusCode: response.StatusCode);
             }
 
         }

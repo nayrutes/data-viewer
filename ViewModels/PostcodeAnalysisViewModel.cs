@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -217,6 +218,10 @@ namespace WorldCompanyDataViewer.ViewModels
                 MessageBox.Show("Database not initialized", nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (ArgumentException e)
+            {
+                MessageBox.Show(e.Message, nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (HttpRequestException e)
             {
                 MessageBox.Show(e.Message, nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
