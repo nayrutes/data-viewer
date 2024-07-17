@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace WorldCompanyDataViewer.Models
@@ -9,7 +8,7 @@ namespace WorldCompanyDataViewer.Models
     {
         [Key]
         [Required]
-        public string Postcode {  get; set; }
+        public required string Postcode {  get; set; }
         [ObservableProperty]
         public decimal _longitude;
         [ObservableProperty]
@@ -18,12 +17,6 @@ namespace WorldCompanyDataViewer.Models
         public int _count;
         [ObservableProperty]
         public bool _isNotAvailable;
-
-
-        //public int? ClusterEntryId { get; set; }
-
-        //[ForeignKey(nameof(ClusterEntryId))]
-        //public ClusterEntry ClusterEntry { get; set; }
 
         [ObservableProperty]
         public ObservableCollection<ClusterEntry> _clusterEntries = new();

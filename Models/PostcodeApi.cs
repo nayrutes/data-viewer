@@ -1,33 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace WorldCompanyDataViewer.Models
+﻿namespace WorldCompanyDataViewer.Models
 {
     internal class PostcodeApiResultEntry
     {
-        public string query { get; set; }
-        public PostcodeApiResultEntry result { get; set; }
-        public string postcode { get; set; }
-        public decimal longitude { get; set; }
-        public decimal latitude { get; set; }
+        public string Query { get; set; } = "";
+        public PostcodeApiResultEntry? Result { get; set; }
+        public string Postcode { get; set; } = "";
+        public decimal Longitude { get; set; }
+        public decimal Latitude { get; set; }
     }
 
     internal class PostcodeApiResult
     {
-        public int status { get; set; }
-        public List<PostcodeApiResultEntry> result { get; set; }
+        public int Status { get; set; }
+        public required List<PostcodeApiResultEntry> Result { get; set; }
     }
 
     internal class PostcodeRequest
     {
-        public List<string> postcodes { get; set; }
+        public List<string> Postcodes { get; set; }
 
         public PostcodeRequest(List<string> postcodes)
         {
-            this.postcodes = postcodes;
+            this.Postcodes = postcodes;
         }
     }
 }
