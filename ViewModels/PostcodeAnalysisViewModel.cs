@@ -166,30 +166,39 @@ namespace WorldCompanyDataViewer.ViewModels
             var entriesToAdd = new List<PostcodeGeodataEntry>();
             await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
 
-            IQueryable<PostcodeGeodataEntry> toCheckQuery =
+            IQueryable<PostcodeGeodataEntry> existing =
+                from x in DatabaseContext.PostcodeGeodataEntries
+                select x;
+
+            IQueryable<PostcodeGeodataEntry> toCheckPeopleQuery =
             from x in DatabaseContext.DataEntries
             group x by x.Postal into g
             select new PostcodeGeodataEntry() { Postcode = g.Key, Count = g.Count() }
             into grouped
             select grouped;
 
-            IQueryable<PostcodeGeodataEntry> existingEntriesQuery =
-            from tc in toCheckQuery
-            from e in DatabaseContext.PostcodeGeodataEntries
+            IQueryable<PostcodeGeodataEntry> existingPostcodesToUpdateQuery =
+            from e in existing
+            from tc in toCheckPeopleQuery
             where tc.Postcode == e.Postcode
             select tc;
 
-            var entriesToUpdate = await existingEntriesQuery.ToListAsync();
+            IQueryable<PostcodeGeodataEntry> PostcodesToAddQuery =
+                from tc in toCheckPeopleQuery
+                where !existing.Any(e => e.Postcode == tc.Postcode)
+                select tc;
+
+            //var entriesToUpdate = await existingPostcodesToUpdateQuery.ToListAsync();
             try
             {
-                await Task.Run(() => UpdateEntries(entriesToAdd, toCheckQuery, existingEntriesQuery));
+                await Task.Run(() => UpdateEntries(existingPostcodesToUpdateQuery, existing));
             }
             catch (Exception)
             {
                 throw;
             }
-
-            await DatabaseContext.PostcodeGeodataEntries.AddRangeAsync(entriesToAdd);//Add must be performed on the main thread
+            //DatabaseContext.
+            await DatabaseContext.PostcodeGeodataEntries.AddRangeAsync(PostcodesToAddQuery);//Add must be performed on the main thread
 
             await DatabaseContext.SaveChangesAsync();
             await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
@@ -197,21 +206,18 @@ namespace WorldCompanyDataViewer.ViewModels
             StatusText = $"Done! (Getting Postcodes from Person-Data)";
         }
 
-        //TODO time and optimize
-        private static async Task UpdateEntries(List<PostcodeGeodataEntry> entriesToAdd, IQueryable<PostcodeGeodataEntry> toCheckQuery, IQueryable<PostcodeGeodataEntry> existingEntriesQuery)
+        //TODO testing?
+        private static async Task UpdateEntries(IQueryable<PostcodeGeodataEntry> newValues, IQueryable<PostcodeGeodataEntry> oldToUpdate)
         {
-            foreach (var entry in toCheckQuery)
+            var oldIt = oldToUpdate.AsEnumerable();
+            var newIt = newValues.AsEnumerable();
+
+
+            foreach (var item in ((oldIt).Zip(newIt)))
             {
-                var matchingEntry = await existingEntriesQuery.FirstOrDefaultAsync(tc => tc.Postcode == entry.Postcode);
-                if (matchingEntry != null)
-                {
-                    entry.Count = matchingEntry.Count;
-                }
-                else
-                {
-                    entriesToAdd.Add(entry);
-                }
+                item.First.Count = item.Second.Count;
             }
+            await Task.CompletedTask;
         }
 
         [RelayCommand]
