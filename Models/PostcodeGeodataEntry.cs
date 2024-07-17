@@ -16,7 +16,7 @@ namespace WorldCompanyDataViewer.Models
         [ObservableProperty]
         public int _count;
         [ObservableProperty]
-        public bool _isNotAvailable;
+        public bool _isNotAvailable = true;
 
         [ObservableProperty]
         public ObservableCollection<ClusterEntry> _clusterEntries = new();
