@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -40,16 +41,19 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private ObservableCollection<DataEntry> _invalidPostcodePeople;
 
+        Dispatcher UiDispatcher;
         public PostcodeAnalysisViewModel()
         {
             this.DatabaseContext = new DatabaseContext();
             postcodeLocationService = new TestDataPostcodeLocationService();
+            UiDispatcher = Dispatcher.CurrentDispatcher;
         }
 
         public PostcodeAnalysisViewModel(IPostcodeLocationService postcodeLocationService, DatabaseContext context)
         {
             this.DatabaseContext = context;
             this.postcodeLocationService = postcodeLocationService;
+            UiDispatcher = Dispatcher.CurrentDispatcher;
         }
 
 
