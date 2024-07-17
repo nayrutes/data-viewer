@@ -41,19 +41,16 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private ObservableCollection<DataEntry> _invalidPostcodePeople;
 
-        Dispatcher UiDispatcher;
         public PostcodeAnalysisViewModel()
         {
             this.DatabaseContext = new DatabaseContext();
             postcodeLocationService = new TestDataPostcodeLocationService();
-            UiDispatcher = Dispatcher.CurrentDispatcher;
         }
 
         public PostcodeAnalysisViewModel(IPostcodeLocationService postcodeLocationService, DatabaseContext context)
         {
             this.DatabaseContext = context;
             this.postcodeLocationService = postcodeLocationService;
-            UiDispatcher = Dispatcher.CurrentDispatcher;
         }
 
 
@@ -78,7 +75,15 @@ namespace WorldCompanyDataViewer.ViewModels
                 context.ChangeTracker.Tracked += OnContextCheckTracker_Tracked; //Do not usubscribe the old context as it is already disposed!
                 context.ChangeTracker.StateChanged += OnContextCheckTracker_StateChanged; //Do not usubscribe the old context as it is already disposed!
             }
-            Task.Run(() => UpdateGeolocationInfosAsync());
+            try
+            {
+                Task.Run(() => UpdateGeolocationInfosAsync());
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
 
         //TODO think of a better way to keep db table and viewmodel collection in sync
@@ -128,8 +133,6 @@ namespace WorldCompanyDataViewer.ViewModels
 
         private async Task UpdateGeolocationInfosAsync()
         {
-            //DatabaseContext.PostcodeGeodataEntries.
-
             IQueryable<DataEntry> data =
                 from x in DatabaseContext.DataEntries
                 join z in DatabaseContext.PostcodeGeodataEntries on x.Postal equals z.Postcode
@@ -154,61 +157,61 @@ namespace WorldCompanyDataViewer.ViewModels
             await AnalyzePostcodesAsync();
         }
 
+        //TODO time and optimize
         [RelayCommand]
         public async Task AddOrUpdatePostcodesWithCountFromPersonDataAsync()
         {
             StatusText = $"Getting Postcodes from Person-Data";
 
             var entriesToAdd = new List<PostcodeGeodataEntry>();
+            await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
 
-            await Task.Run(async () =>
+            IQueryable<PostcodeGeodataEntry> toCheckQuery =
+            from x in DatabaseContext.DataEntries
+            group x by x.Postal into g
+            select new PostcodeGeodataEntry() { Postcode = g.Key, Count = g.Count() }
+            into grouped
+            select grouped;
+
+            IQueryable<PostcodeGeodataEntry> existingEntriesQuery =
+            from tc in toCheckQuery
+            from e in DatabaseContext.PostcodeGeodataEntries
+            where tc.Postcode == e.Postcode
+            select tc;
+
+            var entriesToUpdate = await existingEntriesQuery.ToListAsync();
+            try
             {
-                try
-                {
-                    await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
-
-                    IQueryable<PostcodeGeodataEntry> toCheckQuery =
-                    from x in DatabaseContext.DataEntries
-                    group x by x.Postal into g
-                    select new PostcodeGeodataEntry() { Postcode = g.Key, Count = g.Count() }
-                    into grouped
-                    select grouped;
-
-                    IQueryable<PostcodeGeodataEntry> existingEntriesQuery =
-                    from tc in toCheckQuery
-                    from e in DatabaseContext.PostcodeGeodataEntries
-                    where tc.Postcode == e.Postcode
-                    select tc;
-
-                    var entriesToUpdate = await existingEntriesQuery.ToListAsync();
-
-                    foreach (var entry in toCheckQuery)
-                    {
-                        var matchingEntry = await existingEntriesQuery.FirstOrDefaultAsync(tc => tc.Postcode == entry.Postcode);
-                        if (matchingEntry != null)
-                        {
-                            entry.Count = matchingEntry.Count;
-                        }
-                        else
-                        {
-                            entriesToAdd.Add(entry);
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-
-                    throw;
-                }
-            });
+                await Task.Run(() => UpdateEntries(entriesToAdd, toCheckQuery, existingEntriesQuery));
+            }
+            catch (Exception)
+            {
+                throw;
+            }
 
             await DatabaseContext.PostcodeGeodataEntries.AddRangeAsync(entriesToAdd);//Add must be performed on the main thread
 
             await DatabaseContext.SaveChangesAsync();
             await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
 
-
             StatusText = $"Done! (Getting Postcodes from Person-Data)";
+        }
+
+        //TODO time and optimize
+        private static async Task UpdateEntries(List<PostcodeGeodataEntry> entriesToAdd, IQueryable<PostcodeGeodataEntry> toCheckQuery, IQueryable<PostcodeGeodataEntry> existingEntriesQuery)
+        {
+            foreach (var entry in toCheckQuery)
+            {
+                var matchingEntry = await existingEntriesQuery.FirstOrDefaultAsync(tc => tc.Postcode == entry.Postcode);
+                if (matchingEntry != null)
+                {
+                    entry.Count = matchingEntry.Count;
+                }
+                else
+                {
+                    entriesToAdd.Add(entry);
+                }
+            }
         }
 
         [RelayCommand]
@@ -219,14 +222,15 @@ namespace WorldCompanyDataViewer.ViewModels
                 if (DatabaseContext == null) throw new DatabaseConextNullException();
                 StatusText = $"Fetching Geolocations from {postcodeLocationService.GetUrl()}";
 
-                await Task.Run(async () =>
+                List<PostcodeGeodataEntry> toFetch = await DatabaseContext.PostcodeGeodataEntries.ToListAsync();
+                await postcodeLocationService.RequestPostcodeLocationsAsync(toFetch);
+                await Task.Run(() =>
                 {
-                    List<PostcodeGeodataEntry> toFetch = DatabaseContext.PostcodeGeodataEntries.Local.ToList();
-                    await postcodeLocationService.RequestPostcodeLocationsAsync(toFetch);
                     DatabaseContext.PostcodeGeodataEntries.UpdateRange(toFetch);
-                    await DatabaseContext.SaveChangesAsync();
-                    await UpdateGeolocationInfosAsync();
                 });
+                await DatabaseContext.SaveChangesAsync();
+                await UpdateGeolocationInfosAsync();
+
 
 
                 StatusText = $"Done! (Fetching Geolocations from {postcodeLocationService.GetUrl()})";
@@ -255,34 +259,8 @@ namespace WorldCompanyDataViewer.ViewModels
             try
             {
                 if (DatabaseContext == null) throw new DatabaseConextNullException();
+                await Task.Run(() => AnalyzePostcodesRunnerAsync());
 
-                StatusText = $"Running KMeans Clustering with {ClusterCount} clusters on {PostcodesCollection.Count} datapoints. ";
-
-                List<PostcodeGeodataEntry> availablePostcodeLocations = await DatabaseContext.PostcodeGeodataEntries
-                    .Where(x => x.IsNotAvailable == false)
-                    .ToListAsync();
-
-                List<ClusterEntry> clusters = await Task.Run(() => KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations));
-                StatusText += "Adding closest place";
-                await Task.Run(async () =>
-                {
-                    try
-                    {
-                        foreach (var cluster in clusters)
-                        {
-                            cluster.ClostestTown = await FetchClosestPlace(cluster.ClostestPostcode);
-                        }
-                        await DatabaseContext.ClusterEntries.AddRangeAsync(clusters);
-                        await DatabaseContext.SaveChangesAsync();
-                    }
-                    catch (Exception)
-                    {
-
-                        throw;
-                    }
-                });
-
-                StatusText = $"Found {clusters.Count} clusters";
             }
             catch (DatabaseConextNullException)
             {
@@ -298,9 +276,29 @@ namespace WorldCompanyDataViewer.ViewModels
             }
         }
 
-        public async Task<string> FetchClosestPlace(string postcode)
+        public async Task AnalyzePostcodesRunnerAsync()
         {
-            return await postcodeLocationService.RequestClosestPlace(postcode);
+            StatusText = $"Running KMeans Clustering with {ClusterCount} clusters on {PostcodesCollection.Count} datapoints. ";
+            List<PostcodeGeodataEntry> availablePostcodeLocations = await DatabaseContext.PostcodeGeodataEntries
+                .Where(x => x.IsNotAvailable == false)
+                .ToListAsync();
+            List<ClusterEntry> clusters = KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations);
+
+            StatusText += "Adding closest place";
+
+            await FetchClosestPlacesAsync(clusters);
+            await DatabaseContext.ClusterEntries.AddRangeAsync(clusters);
+            await DatabaseContext.SaveChangesAsync();
+
+            StatusText = $"Found {clusters.Count} clusters";
+        }
+
+        public async Task FetchClosestPlacesAsync(List<ClusterEntry> clusters)
+        {
+            foreach (var cluster in clusters)
+            {
+                cluster.ClostestTown = await postcodeLocationService.RequestClosestPlace(cluster.ClostestPostcode);
+            }
         }
 
         //TODO consider using System.Numerics.Vector3 with float precision for faster calculation or decimal for more accuaracy
