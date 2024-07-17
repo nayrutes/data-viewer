@@ -36,6 +36,11 @@ namespace WorldCompanyDataViewer.ViewModels
         [RelayCommand]
         public void LoadCSV()
         {
+            if (MessageBox.Show("Loading a CSV file will delete all database entries. Are you sure you want to continue?", "Load csv", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+            {
+                return;
+            }
+
             var dialog = new Microsoft.Win32.OpenFileDialog();
             dialog.FileName = "uk-500.csv";
             dialog.DefaultExt = ".csv";
