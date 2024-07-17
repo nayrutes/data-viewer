@@ -14,11 +14,14 @@ namespace WorldCompanyDataViewer.ViewModels
 {
     public partial class MainWindowViewModel : ObservableObject
     {
+        //[ObservableProperty]
+        private DatabaseContext Context;
+
         public DataViewModel DataViewModel { get; }
         public PostcodeAnalysisViewModel PostcodeAnalysisViewModel { get; }
         public EmailAnalysisViewModel EmailAnalysisViewModel { get; }
-        [ObservableProperty]
-        private DatabaseContext _context;
+        public CompanyAnalysisViewModel CompanyAnalysisViewModel { get; }
+
 
         public MainWindowViewModel()
         {
@@ -27,6 +30,7 @@ namespace WorldCompanyDataViewer.ViewModels
             //PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             EmailAnalysisViewModel = new EmailAnalysisViewModel();
+            CompanyAnalysisViewModel = new CompanyAnalysisViewModel();
         }
 
         [RelayCommand]
@@ -115,6 +119,7 @@ namespace WorldCompanyDataViewer.ViewModels
                 DataViewModel.DataEntryViewSource = dataEntryContext.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
                 PostcodeAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
                 EmailAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
+                CompanyAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
             }
             catch (Exception e)
             {

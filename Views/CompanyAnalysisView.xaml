@@ -1,0 +1,41 @@
+﻿<UserControl x:Class="WorldCompanyDataViewer.Views.CompanyAnalysisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:WorldCompanyDataViewer.Views"
+                      xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
+         xmlns:customControls="clr-namespace:WorldCompanyDataViewer.CustomControls"
+         d:DataContext="{d:DesignInstance Type=viewModels:CompanyAnalysisViewModel}"
+         mc:Ignorable="d" 
+         d:DesignHeight="450" d:DesignWidth="800" d:Background="White"
+    xmlns:theme="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2">
+
+    <DockPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="130"/>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <Button Content="Analyse Companies" Command="{Binding AnalyseCompaniesCommand}"/>
+            </StackPanel>
+            <DataGrid Grid.Column="1"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  ItemsSource="{Binding CountyCompanyCountEntryCollection}" 
+                  RowDetailsVisibilityMode="VisibleWhenSelected">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="County" Binding="{Binding County}" Width="2*"/>
+                    <DataGridTextColumn Header="# Companies" Binding="{Binding Count}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+            <Grid  Grid.Column="2">
+                <customControls:PieChart ItemsSource="{Binding PieChartEntries}"/>
+            </Grid>
+
+        </Grid>
+
+    </DockPanel>
+</UserControl>

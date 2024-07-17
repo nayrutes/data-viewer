@@ -26,7 +26,8 @@ namespace WorldCompanyDataViewer.CustomControls
                     continue;
                 entries.Add((PieChartEntry)item);
             }
-            if (entries == null || entries.Count == 0)
+            int entriesCount = entries.Count;
+            if (entries == null || entriesCount == 0)
                 return;
 
             double total = 0;
@@ -47,21 +48,39 @@ namespace WorldCompanyDataViewer.CustomControls
                 double sliceValue = entry.Value;
                 double sliceAngle = (sliceValue / total) * 360;
                 Brush sliceBrush = entry.Brush;
+                double borderSize = 2;
+                if (entriesCount > 10)
+                {
+                    borderSize = (1 - (i / (double)entriesCount));
+                }
 
-                drawingContext.DrawGeometry(sliceBrush, null, CreatePieSliceGeometry(centerX, centerY, radius, angle, angle + sliceAngle));
+                var borderpen = new Pen(new SolidColorBrush(Colors.Black), borderSize);
+                drawingContext.DrawGeometry(sliceBrush, borderpen, CreatePieSliceGeometry(centerX, centerY, radius, angle, angle + sliceAngle));
+
+                angle += sliceAngle;
+            }
+            angle = 0;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                PieChartEntry entry = entries[i];
+                double sliceValue = entry.Value;
+                double sliceAngle = (sliceValue / total) * 360;
+                Brush sliceBrush = entry.Brush;
 
                 if (!String.IsNullOrWhiteSpace(entries[i].Label))
                 {
-                    FormattedText formattedText = new FormattedText($"{entries[i].Label}", CultureInfo.GetCultureInfo("en-us"),
+                    FormattedText formattedText = new FormattedText($"({sliceValue}) {entries[i].Label}", CultureInfo.GetCultureInfo("en-us"),
                                   FlowDirection.LeftToRight,
                                   new Typeface(new FontFamily("Arial").ToString()),
                                   12, Brushes.Black, 1.25);
-                    drawingContext.DrawText(formattedText, CalculateTextPos(centerX, centerY, radius, angle, sliceAngle));
+
+                    //double interpolatedValue = (Math.Sin(((angle + 270)%360) * (Math.PI / 180.0)) + 1);
+                    //double textRadius = double.Lerp(0.5, 0.9, interpolatedValue);
+                    //textRadius = double.Clamp(textRadius, 0.5, 0.9);
+                    drawingContext.DrawText(formattedText, CalculateTextPos(centerX, centerY, radius, angle, sliceAngle, 0.8));
                 }
                 angle += sliceAngle;
             }
-
-            angle = 0;
         }
 
         private StreamGeometry CreatePieSliceGeometry(double cx, double cy, double r, double startAngle, double endAngle)
@@ -91,7 +110,7 @@ namespace WorldCompanyDataViewer.CustomControls
             return geometry;
         }
 
-        private Point CalculateTextPos(double cx, double cy, double r, double startAngle, double sliceAngle, double distanceFromMiddleFactor = 0.7)
+        private Point CalculateTextPos(double cx, double cy, double r, double startAngle, double sliceAngle, double distanceFromMiddleFactor)
         {
             double angleMiddle = (startAngle + (sliceAngle / 2));
             double distanceFromMiddle = r * Math.Clamp(distanceFromMiddleFactor, 0, 1);

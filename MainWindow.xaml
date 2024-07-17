@@ -22,6 +22,9 @@
             <TabItem Header="Postcode Analysis">
                 <views:PostcodeAnalysisView DataContext="{Binding PostcodeAnalysisViewModel}"/>
             </TabItem>
+            <TabItem Header="Company Analysis">
+                <views:CompanyAnalysisView DataContext="{Binding CompanyAnalysisViewModel}"/>
+            </TabItem>
         </TabControl>
     </DockPanel>
 
