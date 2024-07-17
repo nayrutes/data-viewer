@@ -1,8 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -64,8 +61,10 @@ namespace WorldCompanyDataViewer.ViewModels
                 var ctx = new DatabaseContext();
                 await ctx.Database.EnsureDeletedAsync();
                 await ctx.Database.EnsureCreatedAsync();
-                await LoadCsvIntoDbContext(filePath, ctx);
-                await ctx.SaveChangesAsync();
+
+                Utils.CsvLoader loader = new (5000);
+                await loader.LoadDataIntoDatabase(filePath, ctx);
+
                 await SetNewDbContextAsync(ctx);
             }
             catch (Exception e)
@@ -74,43 +73,6 @@ namespace WorldCompanyDataViewer.ViewModels
                 MessageBox.Show(e.Message, nameof(LoadNewDbContextWithCsv), MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-        }
-
-        private Task LoadCsvIntoDbContext(string filePath, DatabaseContext context)
-        {
-            using (var reader = new StreamReader(filePath))
-            {
-
-                string? line = reader.ReadLine();
-                line = reader.ReadLine();//Directly reading next line to skip header line //TODO consider configuration or detection for header
-                while (line != null)
-                {
-                    //TODO testing for unplanned data (empty entry, qutotes in data, ...). Consider using an external csv parsing package
-                    Regex CSVParser = new Regex(",(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))");//Alternative Regex: "[,]{1}(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))"
-                    string[] entry = CSVParser.Split(line);
-                    for (int i = 0; i < entry.Length; i++)
-                    {
-                        entry[i] = entry[i].Trim().TrimStart('"').TrimEnd('"');
-                    }
-                    DataEntry dataEntry = new DataEntry
-                    {
-                        FirstName = entry[0],
-                        LastName = entry[1],
-                        CompanyName = entry[2],
-                        Address = entry[3],
-                        City = entry[4],
-                        County = entry[5],
-                        Postal = entry[6],
-                        Phone1 = entry[7],
-                        Phone2 = entry[8],
-                        Email = entry[9],
-                        Website = entry[10],
-                    };
-                    context.Add(dataEntry);
-                    line = reader.ReadLine();
-                }
-            }
-            return Task.CompletedTask;
         }
 
         public async Task SetNewDbContextAsync(DatabaseContext dataEntryContext)
@@ -138,4 +100,6 @@ namespace WorldCompanyDataViewer.ViewModels
             Context.Dispose();
         }
     }
+
+    
 }
