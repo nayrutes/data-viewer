@@ -8,8 +8,7 @@
          xmlns:customControls="clr-namespace:WorldCompanyDataViewer.CustomControls"
          d:DataContext="{d:DesignInstance Type=viewModels:CompanyAnalysisViewModel}"
          mc:Ignorable="d" 
-         d:DesignHeight="450" d:DesignWidth="800" d:Background="White"
-    xmlns:theme="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2">
+         d:DesignHeight="450" d:DesignWidth="800" d:Background="White">
 
     <DockPanel>
         <Grid>

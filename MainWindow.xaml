@@ -7,11 +7,11 @@
         xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
         d:DataContext="{d:DesignInstance Type=viewModels:MainWindowViewModel}"
         mc:Ignorable="d"
-        Title="MainWindow" Height="700" Width="1200" Loaded="Window_Loaded">
+        Title="Data Viewer" Height="700" Width="1200" Loaded="Window_Loaded">
     <DockPanel>
-        <ToolBar DockPanel.Dock="Top">
-            <Button Command="{Binding LoadCSVCommand}" Content="Load CSV"/>
-        </ToolBar>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+            <Button Command="{Binding LoadCSVCommand}" Content="Load CSV" Height="30" Width="100"/>
+        </StackPanel>
         <TabControl DockPanel.Dock="Top">
             <TabItem Header="Main Data View">
                 <views:MainDataView DataContext="{Binding DataViewModel}"/>
