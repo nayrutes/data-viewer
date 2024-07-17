@@ -80,7 +80,7 @@ namespace WorldCompanyDataViewer.CustomControls
             List<PieChartEntry> entries = new();
             if(entries.Count == 0)
             {
-                entries = DefaultList;
+                entries = new List<PieChartEntry>(DefaultList);
             }
             foreach (var item in ItemsSource)
             {
