@@ -80,15 +80,20 @@ namespace WorldCompanyDataViewer.Utils
                 yield return chunk;
         }
 
-        public async Task LoadDataIntoDatabase(string filePath, DatabaseContext databaseContext)
+        public async Task LoadDataIntoDatabase(string filePath, DatabaseContext databaseContext, Action<string, int> setProgressTextAndPercentage)
         {
+            setProgressTextAndPercentage($"Reading File", 30);
             IEnumerable<DataEntry> records = await ReadCsvAsync(filePath);
+            setProgressTextAndPercentage($"Chunking Data", 60);
             IEnumerable<List<DataEntry>> chunks = ChunkBy(records, batchsize);
 
             databaseContext.ChangeTracker.AutoDetectChangesEnabled = false;
-
+            int allCount = chunks.Count();
+            int counter = 0;
             foreach (var chunk in chunks)
             {
+                counter++;
+                setProgressTextAndPercentage($"Loading chunk {counter}/{allCount}", (counter *100)/allCount);
                 await databaseContext.AddRangeAsync(chunk);
                 await databaseContext.SaveChangesAsync();
                 databaseContext.ChangeTracker.Clear();

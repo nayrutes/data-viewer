@@ -136,7 +136,7 @@ namespace WorldCompanyDataViewer.ViewModels
             await ctx.Database.EnsureCreatedAsync();
 
             Utils.CsvLoader loader = new(5000);
-            await loader.LoadDataIntoDatabase(filepath, ctx);
+            await loader.LoadDataIntoDatabase(filepath, ctx, DataViewModel.SetProgress);
             return ctx;
         }
 
@@ -149,6 +149,7 @@ namespace WorldCompanyDataViewer.ViewModels
                 IsDataAvailable = false;
                 IsLoading = true;
                 await Task.Run(() => SetNewDbContextAsyncRunner(dataEntryContext));
+                DataViewModel.SetProgress("Loading previous Postcode Analysis Data", 80);
                 await PostcodeAnalysisViewModel.SetNewDatabaseContextAsync(dataEntryContext);
                 EmailAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
                 CompanyAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
@@ -170,8 +171,10 @@ namespace WorldCompanyDataViewer.ViewModels
         {
             try
             {
+                DataViewModel.SetProgress("Setting Up Database", 10);
                 await dataEntryContext.Database.EnsureCreatedAsync();
                 await Context.DisposeAsync();
+                DataViewModel.SetProgress("Loading data entries", 50);
                 Context = dataEntryContext;
                 await dataEntryContext.DataEntries.LoadAsync();
                 DataViewModel.DataEntryViewSource = dataEntryContext.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();

@@ -18,6 +18,10 @@
             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Button Visibility="{Binding IsDataLoading, Converter={StaticResource BoolToVisInverse}}" Content="Load CSV" Width="100" Height="70" Command="{Binding LoadCSVCommand}"/>
                 <Label Visibility="{Binding IsDataLoading, Converter={StaticResource BoolToVis}}" Content="Loading Data..."/>
+                <Grid Margin="0" Width="300" Visibility="{Binding IsDataLoading, Converter={StaticResource BoolToVis}}">
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding ProgressPercentage}" Name="pbStatus" />
+                    <TextBlock Text="{Binding ProgressText}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="Black"/>
+                </Grid>
             </StackPanel>
         </DockPanel>
         <DataGrid Visibility="{Binding ShowDataGrid, Converter={StaticResource BoolToVis}}" x:Name="categoryDataGrid" AutoGenerateColumns="True"

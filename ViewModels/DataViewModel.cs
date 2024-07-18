@@ -18,6 +18,12 @@ namespace WorldCompanyDataViewer.ViewModels
         [NotifyPropertyChangedFor(nameof(ShowDataGrid))]
         public bool _isDataLoading;
 
+        [ObservableProperty]
+        private int _progressPercentage;
+
+        [ObservableProperty]
+        private string _progressText;
+
         public DataViewModel(IAsyncRelayCommand loadCSVCommand)
         {
             LoadCSVCommand = loadCSVCommand;
@@ -26,5 +32,11 @@ namespace WorldCompanyDataViewer.ViewModels
         public bool ShowDataGrid => IsDataAvailable && !IsDataLoading;
 
         public IAsyncRelayCommand LoadCSVCommand { get; }
+
+        internal void SetProgress(string text, int percentage)
+        {
+            ProgressPercentage = percentage;
+            ProgressText = text;
+        }
     }
 }
