@@ -5,11 +5,22 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WorldCompanyDataViewer.Views"
              xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
+             xmlns:converters="clr-namespace:WorldCompanyDataViewer.CustomConverters"
              d:DataContext="{d:DesignInstance Type=viewModels:DataViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <converters:BooleanToVisibilityConverter x:Key="BoolToVisInverse" Inverse="True" />
+    </UserControl.Resources>
     <Grid>
-        <DataGrid x:Name="categoryDataGrid" AutoGenerateColumns="True"
+        <DockPanel Visibility="{Binding ShowDataGrid, Converter={StaticResource BoolToVisInverse}}"  >
+            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Button Visibility="{Binding IsDataLoading, Converter={StaticResource BoolToVisInverse}}" Content="Load CSV" Width="100" Height="70" Command="{Binding LoadCSVCommand}"/>
+                <Label Visibility="{Binding IsDataLoading, Converter={StaticResource BoolToVis}}" Content="Loading Data..."/>
+            </StackPanel>
+        </DockPanel>
+        <DataGrid Visibility="{Binding ShowDataGrid, Converter={StaticResource BoolToVis}}" x:Name="categoryDataGrid" AutoGenerateColumns="True"
             EnableRowVirtualization="True"
             IsReadOnly="True"
             ItemsSource="{Binding DataEntryViewSource}" 

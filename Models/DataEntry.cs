@@ -9,13 +9,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace WorldCompanyDataViewer.Models
 {
-    //TODO split up into 2 or more Models as tasks asks for 2 or more tables in the db
     public class DataEntry
     {
-        //"first_name","last_name","company_name","address","city","county","postal","phone1","phone2","email","web"
         [Key]
         [Required]
-        //[DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         public string? FirstName { get; set; }
         public string? LastName { get; set; }

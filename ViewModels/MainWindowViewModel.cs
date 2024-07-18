@@ -1,8 +1,5 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -22,20 +19,69 @@ namespace WorldCompanyDataViewer.ViewModels
         public EmailAnalysisViewModel EmailAnalysisViewModel { get; }
         public CompanyAnalysisViewModel CompanyAnalysisViewModel { get; }
 
+        [ObservableProperty]
+        private int _selectedTabIndex;
+
+        [ObservableProperty]
+        public bool _canLoad;
+
+        [ObservableProperty]
+        //[NotifyPropertyChangedFor(nameof(CanLoad))]
+        //[NotifyCanExecuteChangedFor(nameof(LoadCSVCommand))]
+        private bool _isLoading;
+        [ObservableProperty]
+        private bool _isDataAvailable;
+
 
         public MainWindowViewModel()
         {
             Context = new DatabaseContext();
-            DataViewModel = new DataViewModel();
+            DataViewModel = new DataViewModel(LoadCSVCommand);
             //PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new TestDataPostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             EmailAnalysisViewModel = new EmailAnalysisViewModel();
             CompanyAnalysisViewModel = new CompanyAnalysisViewModel();
         }
 
-        [RelayCommand]
-        public void LoadCSV()
+        partial void OnSelectedTabIndexChanging(int oldValue, int newValue)
         {
+
+        }
+
+        partial void OnSelectedTabIndexChanged(int oldValue, int newValue)
+        {
+
+        }
+        internal void TabSelectionChanged()
+        {
+            if (SelectedTabIndex != 0 && (IsLoading || !IsDataAvailable))
+            {
+                SelectedTabIndex = 0;
+                //_selectedTabIndex = 0;
+            }
+        }
+
+        partial void OnIsLoadingChanged(bool value)
+        {
+            //CanLoad = !value;
+            DataViewModel.IsDataLoading = value;
+            CanLoad = !value;
+            LoadCSVCommand.NotifyCanExecuteChanged();
+        }
+
+        partial void OnIsDataAvailableChanged(bool value)
+        {
+            DataViewModel.IsDataAvailable = value;
+        }
+
+        [RelayCommand(CanExecute = nameof(CanLoad))]
+        public async Task LoadCSVAsync()
+        {
+            if (MessageBox.Show("Loading a CSV file will delete all database entries. Are you sure you want to continue?", "Load csv", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+            {
+                return;
+            }
+
             var dialog = new Microsoft.Win32.OpenFileDialog();
             dialog.FileName = "uk-500.csv";
             dialog.DefaultExt = ".csv";
@@ -45,70 +91,63 @@ namespace WorldCompanyDataViewer.ViewModels
 
             if (result == true)
             {
+                SelectedTabIndex = 0;
                 string filepath = dialog.FileName;
                 Debug.WriteLine($"Selected: {filepath}");
-                Task.Run(() => LoadNewDbContextWithCsv(filepath));
+                try
+                {
+                    IsLoading = true;
+                    DatabaseContext ctx = await Task.Run(()=> LoadNewDbContextWithCsv(filepath));
+                    await SetNewDbContextAsync(ctx);
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e.Message);
+                    MessageBox.Show(e.Message, nameof(LoadCSVAsync), MessageBoxButton.OK, MessageBoxImage.Error);
+                    throw;
+                }
             }
         }
 
-        private async Task LoadNewDbContextWithCsv(string filePath)
+        private async Task<DatabaseContext> LoadNewDbContextWithCsv(string filepath)
+        {
+            await Context.DisposeAsync();
+            var ctx = new DatabaseContext();
+            await ctx.Database.EnsureDeletedAsync();
+            await ctx.Database.EnsureCreatedAsync();
+
+            Utils.CsvLoader loader = new(5000);
+            await loader.LoadDataIntoDatabase(filepath, ctx);
+            return ctx;
+        }
+
+
+        public async Task SetNewDbContextAsync(DatabaseContext dataEntryContext)
         {
             try
             {
-                await Context.DisposeAsync();
-                var ctx = new DatabaseContext();
-                await ctx.Database.EnsureDeletedAsync();
-                await ctx.Database.EnsureCreatedAsync();
-                await LoadCsvIntoDbContext(filePath, ctx);
-                await ctx.SaveChangesAsync();
-                await SetNewDbContextAsync(ctx);
+                Debug.WriteLine("Started Setting Db context");
+                IsDataAvailable = false;
+                IsLoading = true;
+                await Task.Run(() => SetNewDbContextAsyncRunner(dataEntryContext));
+                await PostcodeAnalysisViewModel.SetNewDatabaseContextAsync(dataEntryContext);
+                EmailAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
+                CompanyAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
+                IsDataAvailable = dataEntryContext.DataEntries.FirstOrDefault() != default;
+                Debug.WriteLine("Ended Setting Db context");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.WriteLine(e.Message);
-                MessageBox.Show(e.Message, nameof(LoadNewDbContextWithCsv), MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, nameof(SetNewDbContextAsync), MessageBoxButton.OK, MessageBoxImage.Error);
                 throw;
             }
-        }
-
-        private Task LoadCsvIntoDbContext(string filePath, DatabaseContext context)
-        {
-            using (var reader = new StreamReader(filePath))
+            finally
             {
-
-                string? line = reader.ReadLine();
-                line = reader.ReadLine();//Directly reading next line to skip header line //TODO consider configuration or detection for header
-                while (line != null)
-                {
-                    //TODO testing for unplanned data (empty entry, qutotes in data, ...). Consider using an external csv parsing package
-                    Regex CSVParser = new Regex(",(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))");//Alternative Regex: "[,]{1}(?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))"
-                    string[] entry = CSVParser.Split(line);
-                    for (int i = 0; i < entry.Length; i++)
-                    {
-                        entry[i] = entry[i].Trim().TrimStart('"').TrimEnd('"');
-                    }
-                    DataEntry dataEntry = new DataEntry
-                    {
-                        FirstName = entry[0],
-                        LastName = entry[1],
-                        CompanyName = entry[2],
-                        Address = entry[3],
-                        City = entry[4],
-                        County = entry[5],
-                        Postal = entry[6],
-                        Phone1 = entry[7],
-                        Phone2 = entry[8],
-                        Email = entry[9],
-                        Website = entry[10],
-                    };
-                    context.Add(dataEntry);
-                    line = reader.ReadLine();
-                }
+                IsLoading = false;
             }
-            return Task.CompletedTask;
         }
 
-        public async Task SetNewDbContextAsync(DatabaseContext dataEntryContext)
+        private async Task SetNewDbContextAsyncRunner(DatabaseContext dataEntryContext)
         {
             try
             {
@@ -117,9 +156,6 @@ namespace WorldCompanyDataViewer.ViewModels
                 Context = dataEntryContext;
                 await dataEntryContext.DataEntries.LoadAsync();
                 DataViewModel.DataEntryViewSource = dataEntryContext.DataEntries.Local.ToBindingList() ?? new BindingList<DataEntry>();
-                PostcodeAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
-                EmailAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
-                CompanyAnalysisViewModel.SetNewDatabaseContext(dataEntryContext);
             }
             catch (Exception e)
             {
@@ -132,5 +168,8 @@ namespace WorldCompanyDataViewer.ViewModels
         {
             Context.Dispose();
         }
+
     }
+
+    
 }

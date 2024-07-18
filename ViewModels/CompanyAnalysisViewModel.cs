@@ -1,18 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.ObjectModel;
 using System.Windows.Media;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using WorldCompanyDataViewer.CustomControls;
 using WorldCompanyDataViewer.Models;
-using WorldCompanyDataViewer.Utils;
 
 namespace WorldCompanyDataViewer.ViewModels
 {
@@ -24,19 +17,14 @@ namespace WorldCompanyDataViewer.ViewModels
         private ObservableCollection<CountyCompanyCountEntry> _countyCompanyCountEntryCollection = new();
 
         [ObservableProperty]
-        private ObservableCollection<PieChart.PieChartEntry> _pieChartEntries = new()
-        {
-            new PieChart.PieChartEntry
-            {
-                Value = 1,
-                Brush = new SolidColorBrush(Colors.DarkBlue),
-                Label = "No analytics run yet"
-            }
-        };
+        private ObservableCollection<PieChart.PieChartEntry> _pieChartEntries = new();
+
+        Dispatcher UiDispatcher;
 
         public CompanyAnalysisViewModel()
         {
             DatabaseContext = new DatabaseContext();
+            UiDispatcher = Dispatcher.CurrentDispatcher;
         }
         internal void SetNewDatabaseContext(DatabaseContext? value)
         {
@@ -49,8 +37,8 @@ namespace WorldCompanyDataViewer.ViewModels
             await CountCountyCompaniesAsync();
 
             const int cutoff = 1;//TODO make user accessable if needed
-            //await Task.Run(() => SetPieChart(cutoff));
-            await SetPieChart(cutoff);
+            
+            await PieChart.SetPieChartAsync(cutoff, PieChartEntries, CountyCompanyCountEntryCollection, x=>x.Count, x=>x.County);
         }
 
         private async Task CountCountyCompaniesAsync()
@@ -62,35 +50,11 @@ namespace WorldCompanyDataViewer.ViewModels
             into grouped
             orderby grouped.Count descending
             select grouped;
-            
+
 
             CountyCompanyCountEntryCollection = new ObservableCollection<CountyCompanyCountEntry>(await data.ToListAsync());
         }
 
-        private Task SetPieChart(int cutoff)
-        {
-            ColorGenerator.ResetBrush();
-            PieChartEntries.Clear();
-            var mainEntries = CountyCompanyCountEntryCollection.Where(x => x.Count > cutoff).Select(x => new PieChart.PieChartEntry
-            {
-                Value = x.Count,
-                Label = x.County,
-                Brush = ColorGenerator.GetNextBrush()
-            });
-            foreach (var entry in mainEntries)
-            {
-                PieChartEntries.Add(entry);
-            }
-            int elseCount = CountyCompanyCountEntryCollection.Where(x => x.Count <= cutoff).Sum(x => x.Count);
-            PieChart.PieChartEntry elseEntry = new PieChart.PieChartEntry()
-            {
-                Value = elseCount,
-                Label = "other",
-                Brush = new SolidColorBrush(Colors.Gray)
-            };
-            PieChartEntries.Add(elseEntry);
-            return Task.CompletedTask;
-        }
     }
     public struct CountyCompanyCountEntry
     {

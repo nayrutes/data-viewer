@@ -4,10 +4,17 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:WorldCompanyDataViewer.Views"
-             xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels"
+             xmlns:viewModels="clr-namespace:WorldCompanyDataViewer.ViewModels" xmlns:componentmodel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
              d:DataContext="{d:DesignInstance Type=viewModels:PostcodeAnalysisViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800" d:Background="White">
+    <UserControl.Resources>
+        <CollectionViewSource x:Key="SortedClusterCollectionView" Source="{Binding ClustersCollection}">
+            <CollectionViewSource.SortDescriptions>
+                <componentmodel:SortDescription PropertyName="PeopleCount" Direction="Descending"/>
+            </CollectionViewSource.SortDescriptions>
+        </CollectionViewSource>
+    </UserControl.Resources>
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Height="40">
             <Label Content="Status: " VerticalAlignment="Center"/>
@@ -36,12 +43,16 @@
                     <Label Content="Clusters #:"/>
                     <TextBox PreviewTextInput="IntegerValidation" Text="{Binding ClusterCount}"  Margin="2,2,2,2" HorizontalAlignment="Stretch"/>
                 </DockPanel>
+                <DockPanel Margin="2,2,2,2">
+                    <Label Content="Max iterations #:"/>
+                    <TextBox PreviewTextInput="IntegerValidation" Text="{Binding ClusterIterations}"  Margin="2,2,2,2" HorizontalAlignment="Stretch"/>
+                </DockPanel>
                 <Decorator Height="30"/>
                 <Button Content="Get Postcodes from Data" Command="{Binding AddOrUpdatePostcodesWithCountFromPersonDataCommand}"/>
                 <Button Content="Fetch Geolocations" Command="{Binding FetchGeolocationDataCommand}"/>
                 <Button Content="FindClusters" Command="{Binding AnalyzePostcodesCommand}"/>
             </StackPanel>
-            <TabControl Grid.Column="1">
+            <TabControl Grid.Column="1" SelectedIndex="{Binding SelectedTabIndex}">
                 <TabItem Header="Postcode Geodata">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -85,7 +96,7 @@
                         <DataGrid Grid.Column="0"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
-                              ItemsSource="{Binding ClustersCollection}"
+                              ItemsSource="{Binding Source={StaticResource SortedClusterCollectionView}}"
                               SelectedItem="{Binding SelectetClusterViewModel}" 
                               RowDetailsVisibilityMode="VisibleWhenSelected">
                             <DataGrid.Columns>

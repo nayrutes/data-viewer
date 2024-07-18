@@ -4,16 +4,14 @@ namespace WorldCompanyDataViewer.Models
 {
     public class DatabaseContext : DbContext
     {
-        //TODO split up into 2 or more Models as tasks asks for 2 or more tables in the db
         public DbSet<DataEntry> DataEntries { get; set; }
         public DbSet<ClusterEntry> ClusterEntries { get; set; }
         public DbSet<PostcodeGeodataEntry> PostcodeGeodataEntries { get; set; }
-        //TODO make path not fixed
-        public string dbPath = @"C:\Users\Felix\Documents\Projects\FatsharkCodeTest\dataEntries.db";
+        //TODO consider making db location user selectable
+        public string dbPath = AppDomain.CurrentDomain.BaseDirectory + @"\dataEntries.db";
+        
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            //base.OnConfiguring(optionsBuilder);
-
             optionsBuilder.UseSqlite($"Data Source={dbPath}");
         }
 
@@ -24,15 +22,11 @@ namespace WorldCompanyDataViewer.Models
                 .Property(e => e.Id)
                 .ValueGeneratedOnAdd();
 
+
             modelBuilder.Entity<ClusterEntry>()
                 .Property(e => e.Id)
                 .ValueGeneratedOnAdd();
-            //modelBuilder.Entity<ClusterEntry>()
-            //    .HasMany(c => c.PostcodeGeodataEntries)
-            //    .WithOne(p => p.ClusterEntry)
-            //    .HasForeignKey(p => p.ClusterEntryId)
-            //    .IsRequired(false)
-            //    .OnDelete(DeleteBehavior.Cascade); //delete clusters when deleting entries
+            
             modelBuilder.Entity<ClusterEntry>()
             .HasMany(c => c.PostcodeGeodataEntries)
             .WithMany(p => p.ClusterEntries)
@@ -46,6 +40,7 @@ namespace WorldCompanyDataViewer.Models
                     .HasOne<ClusterEntry>()
                     .WithMany()
                     .HasForeignKey("ClusterEntryId"));
+
             modelBuilder.Entity<ClusterEntry>()
                 .Navigation(e => e.PostcodeGeodataEntries)
                 .AutoInclude();

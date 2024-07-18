@@ -24,13 +24,7 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private ObservableCollection<MailDomainDisplayItems> _mailDomainData = new();
         [ObservableProperty]
-        private ObservableCollection<PieChart.PieChartEntry> _pieChartEntries = new() { new PieChart.PieChartEntry
-        {
-            Value = 1,
-            Brush = new SolidColorBrush(Colors.DarkBlue),
-            Label = "No analytics run yet"
-        }
-        };
+        private ObservableCollection<PieChart.PieChartEntry> _pieChartEntries = new();
         [ObservableProperty]
         private string _topDomain0 = "";
         [ObservableProperty]
@@ -57,7 +51,7 @@ namespace WorldCompanyDataViewer.ViewModels
             SetTop3Domains();
 
             const int cutoff = 1;//TODO make user accessable if needed
-            SetPieChart(cutoff);
+            await PieChart.SetPieChartAsync(cutoff, PieChartEntries, MailDomainData, x => x.Count, x => x.MailDomain);
         }
 
         private async Task CountMailDomains()
@@ -87,30 +81,6 @@ namespace WorldCompanyDataViewer.ViewModels
             TopDomain0 = MailDomainData.Count > 0 ? MailDomainData[0].MailDomain : "";
             TopDomain1 = MailDomainData.Count > 1 ? MailDomainData[1].MailDomain : "";
             TopDomain2 = MailDomainData.Count > 2 ? MailDomainData[2].MailDomain : "";
-        }
-
-        private void SetPieChart(int cutoff)
-        {
-            ColorGenerator.ResetBrush();
-            var mainEntries = MailDomainData.Where(x => x.Count > cutoff).Select(x => new PieChart.PieChartEntry
-            {
-                Value = x.Count,
-                Label = x.MailDomain,
-                Brush = ColorGenerator.GetNextBrush()
-            });
-            PieChartEntries.Clear();
-            foreach (var entry in mainEntries)
-            {
-                PieChartEntries.Add(entry);
-            }
-            int elseCount = MailDomainData.Where(x => x.Count <= cutoff).Sum(x => x.Count);
-            PieChart.PieChartEntry elseEntry = new PieChart.PieChartEntry()
-            {
-                Value = elseCount,
-                Label = "other",
-                Brush = new SolidColorBrush(Colors.Gray)
-            };
-            PieChartEntries.Add(elseEntry);
         }
 
     }

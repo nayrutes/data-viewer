@@ -1,13 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
+using System.Net.Http;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
@@ -20,12 +16,15 @@ namespace WorldCompanyDataViewer.ViewModels
 {
     public partial class PostcodeAnalysisViewModel : ObservableObject
     {
-        
+
         public DatabaseContext DatabaseContext { get; private set; }
         public readonly IPostcodeLocationService postcodeLocationService;
 
         [ObservableProperty]
         private string _statusText = "Data Analysis Status - Not Started";
+        [ObservableProperty]
+        private int _selectedTabIndex;
+
         [ObservableProperty]
         private int _clusterCount = 5;
         [ObservableProperty]
@@ -58,14 +57,14 @@ namespace WorldCompanyDataViewer.ViewModels
         }
 
 
-        internal void SetNewDatabaseContext(DatabaseContext context)
+        internal async Task SetNewDatabaseContextAsync(DatabaseContext context)
         {
             Debug.WriteLine("SettingDbContextOnPostcodesVM");
             DatabaseContext = context;
-            PostcodesCollection = new ();
+            PostcodesCollection = new();
             ClustersCollection = new();
 
-            if(context == null)
+            if (context == null)
             {
                 return;
             }
@@ -73,13 +72,39 @@ namespace WorldCompanyDataViewer.ViewModels
             context.ClusterEntries.Load();
 
             PostcodesCollection = context.PostcodeGeodataEntries.Local.ToObservableCollection();
-            ClustersCollection = new ObservableCollection<ClusterEntryViewModel>(context.ClusterEntries.Local.Select(x => new ClusterEntryViewModel(x, context)).ToList());
+
+            try
+            {
+                //TODO think of a better place to call this save as async or fire and forget
+                await Task.Run(() => UpdateClusterCollectionAsync(context));
+                await Task.Run(() => UpdateGeolocationInfosAsync());
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+            
+            //ClustersCollection = new ObservableCollection<ClusterEntryViewModel>();
+
+            //foreach (var item in context.ClusterEntries)
+            //{
+            //    ClustersCollection.Add(new ClusterEntryViewModel(item, context));
+            //}
+
             if (context != null)
             {
                 context.ChangeTracker.Tracked += OnContextCheckTracker_Tracked; //Do not usubscribe the old context as it is already disposed!
                 context.ChangeTracker.StateChanged += OnContextCheckTracker_StateChanged; //Do not usubscribe the old context as it is already disposed!
             }
-            Task.Run(() => UpdateGeolocationInfosAsync());
+
+        }
+
+
+        private async Task UpdateClusterCollectionAsync(DatabaseContext context)
+        {
+            ClustersCollection = new ObservableCollection<ClusterEntryViewModel>(context.ClusterEntries.Local.Select(x => new ClusterEntryViewModel(x, context)).ToList());
+            await Task.CompletedTask;
         }
 
         //TODO think of a better way to keep db table and viewmodel collection in sync
@@ -115,9 +140,9 @@ namespace WorldCompanyDataViewer.ViewModels
                     }
                 }
 
-                if(e.OldState == EntityState.Added)
+                if (e.OldState == EntityState.Added)
                 {
-                    var viewModel = ClustersCollection.ElementAt(entry.Id-1);
+                    var viewModel = ClustersCollection.ElementAt(entry.Id - 1);
                     if (viewModel != null)
                     {
                         //Update Id as it was added by the database
@@ -127,10 +152,9 @@ namespace WorldCompanyDataViewer.ViewModels
             }
         }
 
-        private async Task UpdateGeolocationInfosAsync()
-        {
-            //DatabaseContext.PostcodeGeodataEntries.
 
+        public async Task UpdateGeolocationInfosAsync()
+        {
             IQueryable<DataEntry> data =
                 from x in DatabaseContext.DataEntries
                 join z in DatabaseContext.PostcodeGeodataEntries on x.Postal equals z.Postcode
@@ -142,9 +166,7 @@ namespace WorldCompanyDataViewer.ViewModels
             NotValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.Where(x => x.IsNotAvailable).CountAsync();
 
             ValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.CountAsync() - NotValidPostcodesCount;
-
-    }
-
+        }
 
 
         [RelayCommand]
@@ -155,45 +177,67 @@ namespace WorldCompanyDataViewer.ViewModels
             await AnalyzePostcodesAsync();
         }
 
+        //TODO time and optimize
         [RelayCommand]
         public async Task AddOrUpdatePostcodesWithCountFromPersonDataAsync()
         {
-            if (DatabaseContext == null)
-            {
-                Debug.WriteLine("Datacontext was null when calling GetPostcodesWithCountFromPersonData");
-                return;
-            }
             StatusText = $"Getting Postcodes from Person-Data";
 
+            var entriesToAdd = new List<PostcodeGeodataEntry>();
             await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
-            List<PostcodeGeodataEntry> fromPerson = await DatabaseContext.DataEntries.GroupBy(t => t.Postal)
-                .Select(g => new
-                {
-                    Value = g.Key,
-                    Count = g.Count()
-                }).Select(x => new PostcodeGeodataEntry()
-                {
-                    Postcode = x.Value,
-                    Count = x.Count
-                }).ToListAsync();
 
-            //TODO rewrite to used AddRangeAsync
-            foreach (var item in fromPerson)
+            IQueryable<PostcodeGeodataEntry> existing =
+                from x in DatabaseContext.PostcodeGeodataEntries
+                select x;
+
+            IQueryable<PostcodeGeodataEntry> toCheckPeopleQuery =
+            from x in DatabaseContext.DataEntries
+            group x by x.Postal into g
+            select new PostcodeGeodataEntry() { Postcode = g.Key, Count = g.Count() }
+            into grouped
+            select grouped;
+
+            IQueryable<PostcodeGeodataEntry> existingPostcodesToUpdateQuery =
+            from e in existing
+            from tc in toCheckPeopleQuery
+            where tc.Postcode == e.Postcode
+            select tc;
+
+            IQueryable<PostcodeGeodataEntry> PostcodesToAddQuery =
+                from tc in toCheckPeopleQuery
+                where !existing.Any(e => e.Postcode == tc.Postcode)
+                select tc;
+
+            //var entriesToUpdate = await existingPostcodesToUpdateQuery.ToListAsync();
+            try
             {
-                var entry = DatabaseContext.PostcodeGeodataEntries.Local.FirstOrDefault(x => x.Postcode == item.Postcode);
-                if (entry != null)
-                {
-                    entry.Count = item.Count;
-                }
-                else
-                {
-                    await DatabaseContext.PostcodeGeodataEntries.AddAsync(item);
-                }
+                await Task.Run(() => UpdateEntries(existingPostcodesToUpdateQuery, existing));
             }
+            catch (Exception)
+            {
+                throw;
+            }
+            //DatabaseContext.
+            await DatabaseContext.PostcodeGeodataEntries.AddRangeAsync(PostcodesToAddQuery);//Add must be performed on the main thread
+
             await DatabaseContext.SaveChangesAsync();
             await DatabaseContext.PostcodeGeodataEntries.LoadAsync();
 
             StatusText = $"Done! (Getting Postcodes from Person-Data)";
+        }
+
+        //TODO testing?
+        private static async Task UpdateEntries(IQueryable<PostcodeGeodataEntry> newValues, IQueryable<PostcodeGeodataEntry> oldToUpdate)
+        {
+            var oldIt = oldToUpdate.AsEnumerable();
+            var newIt = newValues.AsEnumerable();
+
+
+            foreach (var item in ((oldIt).Zip(newIt)))
+            {
+                item.First.Count = item.Second.Count;
+            }
+            await Task.CompletedTask;
         }
 
         [RelayCommand]
@@ -202,14 +246,19 @@ namespace WorldCompanyDataViewer.ViewModels
             try
             {
                 if (DatabaseContext == null) throw new DatabaseConextNullException();
-
                 StatusText = $"Fetching Geolocations from {postcodeLocationService.GetUrl()}";
 
-                List<PostcodeGeodataEntry> toFetch = DatabaseContext.PostcodeGeodataEntries.Local.ToList();
+                List<PostcodeGeodataEntry> toFetch = await DatabaseContext.PostcodeGeodataEntries.ToListAsync();
                 await postcodeLocationService.RequestPostcodeLocationsAsync(toFetch);
-                DatabaseContext.PostcodeGeodataEntries.UpdateRange(toFetch);
+                await Task.Run(() =>
+                {
+                    DatabaseContext.PostcodeGeodataEntries.UpdateRange(toFetch);
+                });
                 await DatabaseContext.SaveChangesAsync();
                 await UpdateGeolocationInfosAsync();
+
+
+
                 StatusText = $"Done! (Fetching Geolocations from {postcodeLocationService.GetUrl()})";
             }
             catch (DatabaseConextNullException)
@@ -217,6 +266,10 @@ namespace WorldCompanyDataViewer.ViewModels
                 MessageBox.Show("Database not initialized", nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (ArgumentException e)
+            {
+                MessageBox.Show(e.Message, nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (HttpRequestException e)
             {
                 MessageBox.Show(e.Message, nameof(FetchGeolocationDataAsync), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -232,22 +285,9 @@ namespace WorldCompanyDataViewer.ViewModels
             try
             {
                 if (DatabaseContext == null) throw new DatabaseConextNullException();
+                await Task.Run(() => AnalyzePostcodesRunnerAsync());
+                SelectedTabIndex = 1;
 
-                StatusText = $"Running KMeans Clustering with {ClusterCount} clusters on {PostcodesCollection.Count} datapoints";
-
-                List<PostcodeGeodataEntry> availablePostcodeLocations = DatabaseContext.PostcodeGeodataEntries.Local
-                    .Where(x => x.IsNotAvailable == false)
-                    .ToList();
-
-                List<ClusterEntry> clusters = await Task.Run(() => KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations));
-                foreach (var cluster in clusters)
-                {
-                    cluster.ClostestTown = await FetchClosestPlace(cluster.ClostestPostcode);
-                }
-                await DatabaseContext.ClusterEntries.AddRangeAsync(clusters);
-                await DatabaseContext.SaveChangesAsync();
-
-                StatusText = $"Found {clusters.Count} clusters";
             }
             catch (DatabaseConextNullException)
             {
@@ -263,9 +303,28 @@ namespace WorldCompanyDataViewer.ViewModels
             }
         }
 
-        public async Task<string> FetchClosestPlace(string postcode)
+        public async Task AnalyzePostcodesRunnerAsync()
         {
-            return await postcodeLocationService.RequestClosestPlace(postcode);
+            StatusText = $"Running KMeans Clustering with {ClusterCount} clusters on {PostcodesCollection.Count} datapoints. ";
+            List<PostcodeGeodataEntry> availablePostcodeLocations = await DatabaseContext.PostcodeGeodataEntries
+                .Where(x => x.IsNotAvailable == false)
+                .ToListAsync();
+            List<ClusterEntry> clusters = KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations);
+            StatusText += "Adding closest place";
+
+            await FetchClosestPlacesAsync(clusters);
+            await DatabaseContext.ClusterEntries.AddRangeAsync(clusters);
+            await DatabaseContext.SaveChangesAsync();
+
+            StatusText = $"Found {clusters.Count} clusters";
+        }
+
+        public async Task FetchClosestPlacesAsync(List<ClusterEntry> clusters)
+        {
+            foreach (var cluster in clusters)
+            {
+                cluster.ClostestTown = await postcodeLocationService.RequestClosestPlace(cluster.ClostestPostcode);
+            }
         }
 
         //TODO consider using System.Numerics.Vector3 with float precision for faster calculation or decimal for more accuaracy
@@ -280,7 +339,7 @@ namespace WorldCompanyDataViewer.ViewModels
             Vector3D?[] centroidsPos = new Vector3D?[clusterCount];
             Vector3D[] geoDataPos = new Vector3D[geodata.Count];
             int[] centroidIdAssignments = new int[geoDataPos.Length];
-            
+
             //TODO consider picking values from the list insead of generating random ones
             //Initialize random clusters (get bounding "box" and initialize inside)
             double lonMin = geodata.Min(x => decimal.ToDouble(x.Longitude));
@@ -329,7 +388,7 @@ namespace WorldCompanyDataViewer.ViewModels
                     }
                     centroidIdAssignments[geoDataIndex] = clusterId;
                 }//TODO check spread of clusters and maybe restart?
-                
+
                 //Center clusters
                 bool valueChanged = false;
                 for (int centroidIndex = 0; centroidIndex < centroidsPos.Length; centroidIndex++)
@@ -383,7 +442,7 @@ namespace WorldCompanyDataViewer.ViewModels
 
                 List<PostcodeGeodataEntry> postcodeGeodataEntries = indexesOfAssignedDistanceData.Select(index => geodata[index]).ToList();
                 List<(Vector3D, int)> postcodeGeodataPositions = indexesOfAssignedDistanceData.Select(index => (geoDataPos[index], index)).ToList();
-                
+
                 double shortestDistance = double.MaxValue;
                 int shortestDistanceIndex = -1;
                 for (int geoDataIndex = 0; geoDataIndex < geoDataPos.Length; geoDataIndex++)
@@ -399,7 +458,7 @@ namespace WorldCompanyDataViewer.ViewModels
                 Vector lonLat = VectorUtils.CartersianToPolarDegrees(cp);
                 var cluster = new ClusterEntry()
                 {
-                    Longitude = (decimal) lonLat.X,
+                    Longitude = (decimal)lonLat.X,
                     Latitude = (decimal)lonLat.Y,
                     PostcodeGeodataEntries = new ObservableCollection<PostcodeGeodataEntry>(postcodeGeodataEntries),
                     ClostestPostcode = geodata[shortestDistanceIndex].Postcode

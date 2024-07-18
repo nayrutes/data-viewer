@@ -37,11 +37,11 @@ namespace WorldCompanyDataViewer.Utils
 
         private static int currentIndex = 0;
 
-        public static SolidColorBrush GetNextBrush()
+        public static Color GetNextColor()
         {
             Color color = predefinedColors[currentIndex];
             currentIndex = (currentIndex + 1) % predefinedColors.Count;
-            return new SolidColorBrush(color);
+            return color;
         }
 
         internal static void ResetBrush()

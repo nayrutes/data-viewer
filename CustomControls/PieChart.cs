@@ -1,18 +1,76 @@
 ﻿using System.Collections;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WorldCompanyDataViewer.Utils;
 
 namespace WorldCompanyDataViewer.CustomControls
 {
     public class PieChart : ItemsControl
     {
+        /// <summary>
+        /// Conveniance method to replace all PieChartEntry items in an ObservableCollection
+        /// </summary>
+        /// <typeparam name="T">type of collecion to display</typeparam>
+        /// <param name="cutoff">count from when an entry is part of 'others'</param>
+        /// <param name="pieChartEntries">collection of PieChartEntries to update</param>
+        /// <param name="collection">Collection to display</param>
+        /// <param name="propertyAccessorCount">count porperty</param>
+        /// <param name="propertyAccessorLabel">label property</param>
+        /// <param name="otherLabel">label for the cutoff part</param>
+        /// <returns></returns>
+        public static async Task SetPieChartAsync<T>(int cutoff, ObservableCollection<PieChart.PieChartEntry> pieChartEntries, IEnumerable<T> collection, Func<T, int> propertyAccessorCount, Func<T, string> propertyAccessorLabel, string otherLabel = "other")
+        {
+            ColorGenerator.ResetBrush();
+            pieChartEntries.Clear();
+            List<PieChart.PieChartEntry> toAdd = await Task.Run(() =>
+            {
+                List<PieChart.PieChartEntry> entries = new List<PieChart.PieChartEntry>();
+                var mainEntries = collection.Where(x => propertyAccessorCount(x) > cutoff)
+                    .Select(x => new PieChart.PieChartEntry
+                    {
+                        Value = propertyAccessorCount(x),
+                        Label = propertyAccessorLabel(x),
+                        Color = ColorGenerator.GetNextColor()
+                    });
+                entries.AddRange(mainEntries);
+
+                int elseCount = collection.Where(x => propertyAccessorCount(x) <= cutoff).Sum(x => propertyAccessorCount(x));
+                PieChart.PieChartEntry elseEntry = new PieChart.PieChartEntry()
+                {
+                    Value = elseCount,
+                    Label = otherLabel,
+                    Color = Colors.Gray,
+                };
+                entries.Add(elseEntry);
+                return entries;
+            });
+            foreach (var item in toAdd)
+            {
+                pieChartEntries.Add(item);
+            }
+
+        }
+
+
+
+
         static PieChart()
         {
             DefaultStyleKeyProperty.OverrideMetadata(typeof(PieChart), new FrameworkPropertyMetadata(typeof(PieChart)));
         }
+
+        private static List<PieChartEntry> DefaultList = new List<PieChartEntry>() {
+            new PieChartEntry
+            {
+                Value = 1,
+                Color = Colors.DarkBlue,
+                Label = "No yet set"
+            }
+        };
 
         protected override void OnRender(DrawingContext drawingContext)
         {
@@ -20,6 +78,10 @@ namespace WorldCompanyDataViewer.CustomControls
             if (ItemsSource == null)
                 return;
             List<PieChartEntry> entries = new();
+            if(entries.Count == 0)
+            {
+                entries = new List<PieChartEntry>(DefaultList);
+            }
             foreach (var item in ItemsSource)
             {
                 if (item is not PieChartEntry)
@@ -47,7 +109,7 @@ namespace WorldCompanyDataViewer.CustomControls
                 PieChartEntry entry = entries[i];
                 double sliceValue = entry.Value;
                 double sliceAngle = (sliceValue / total) * 360;
-                Brush sliceBrush = entry.Brush;
+                Brush sliceBrush = new SolidColorBrush(entry.Color);
                 double borderSize = 2;
                 if (entriesCount > 10)
                 {
@@ -65,7 +127,6 @@ namespace WorldCompanyDataViewer.CustomControls
                 PieChartEntry entry = entries[i];
                 double sliceValue = entry.Value;
                 double sliceAngle = (sliceValue / total) * 360;
-                Brush sliceBrush = entry.Brush;
 
                 if (!String.IsNullOrWhiteSpace(entries[i].Label))
                 {
@@ -136,7 +197,8 @@ namespace WorldCompanyDataViewer.CustomControls
         public struct PieChartEntry
         {
             public double Value { get; set; }
-            public Brush Brush { get; set; }
+            //public Brush Brush { get; set; }
+            public Color Color { get; set; }
             public string Label { get; set; }
         }
     }

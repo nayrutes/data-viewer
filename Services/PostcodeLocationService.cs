@@ -76,6 +76,10 @@ namespace WorldCompanyDataViewer.Services
                     Console.WriteLine("Invalid JSON.");
                 }
             }
+            else
+            {
+                throw new HttpRequestException(HttpRequestError.InvalidResponse, "Api request not successful", statusCode: response.StatusCode);
+            }
 
         }
 

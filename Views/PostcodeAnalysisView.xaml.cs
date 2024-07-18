@@ -20,5 +20,6 @@ namespace WorldCompanyDataViewer.Views
             Regex regex = new Regex("[^0-9]+");
             e.Handled = regex.IsMatch(e.Text);
         }
+
     }
 }
