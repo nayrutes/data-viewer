@@ -41,3 +41,5 @@ Missing Features (TODO)
 - Data edit
   - Data validation
   - Cascading updates (UI and data analysis)
+
+![image](https://github.com/user-attachments/assets/c174af76-a90e-4af9-acef-d66dcb79c6da)
