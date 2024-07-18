@@ -12,7 +12,7 @@
         <ToolBar DockPanel.Dock="Top">
             <Button Command="{Binding LoadCSVCommand}" Content="Load CSV"/>
         </ToolBar>
-        <TabControl DockPanel.Dock="Top">
+        <TabControl DockPanel.Dock="Top" SelectedIndex="{Binding SelectedTabIndex}" SelectionChanged="TabControl_SelectionChanged">
             <TabItem Header="Main Data View">
                 <views:MainDataView DataContext="{Binding DataViewModel}"/>
             </TabItem>

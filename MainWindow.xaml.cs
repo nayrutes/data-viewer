@@ -13,16 +13,21 @@ namespace WorldCompanyDataViewer
             this.DataContext = MainWindowViewModel;
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             //Autoload DB content
-            Task.Run(() => MainWindowViewModel.SetNewDbContextAsync(new Models.DatabaseContext()));
+            await MainWindowViewModel.SetNewDbContextAsync(new Models.DatabaseContext());
         }
 
         protected override void OnClosing(CancelEventArgs e)
         {
             MainWindowViewModel.Closing();
             base.OnClosing(e);
+        }
+
+        private void TabControl_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            MainWindowViewModel.TabSelectionChanged();
         }
     }
 

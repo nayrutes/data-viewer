@@ -23,6 +23,9 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private string _statusText = "Data Analysis Status - Not Started";
         [ObservableProperty]
+        private int _selectedTabIndex;
+
+        [ObservableProperty]
         private int _clusterCount = 5;
         [ObservableProperty]
         private int _clusterIterations = 25;
@@ -54,7 +57,7 @@ namespace WorldCompanyDataViewer.ViewModels
         }
 
 
-        internal void SetNewDatabaseContext(DatabaseContext context)
+        internal async Task SetNewDatabaseContextAsync(DatabaseContext context)
         {
             Debug.WriteLine("SettingDbContextOnPostcodesVM");
             DatabaseContext = context;
@@ -69,21 +72,39 @@ namespace WorldCompanyDataViewer.ViewModels
             context.ClusterEntries.Load();
 
             PostcodesCollection = context.PostcodeGeodataEntries.Local.ToObservableCollection();
-            ClustersCollection = new ObservableCollection<ClusterEntryViewModel>(context.ClusterEntries.Local.Select(x => new ClusterEntryViewModel(x, context)).ToList());
-            if (context != null)
-            {
-                context.ChangeTracker.Tracked += OnContextCheckTracker_Tracked; //Do not usubscribe the old context as it is already disposed!
-                context.ChangeTracker.StateChanged += OnContextCheckTracker_StateChanged; //Do not usubscribe the old context as it is already disposed!
-            }
+
             try
             {
-                Task.Run(() => UpdateGeolocationInfosAsync());
+                //TODO think of a better place to call this save as async or fire and forget
+                await Task.Run(() => UpdateClusterCollectionAsync(context));
+                await Task.Run(() => UpdateGeolocationInfosAsync());
             }
             catch (Exception)
             {
 
                 throw;
             }
+            
+            //ClustersCollection = new ObservableCollection<ClusterEntryViewModel>();
+
+            //foreach (var item in context.ClusterEntries)
+            //{
+            //    ClustersCollection.Add(new ClusterEntryViewModel(item, context));
+            //}
+
+            if (context != null)
+            {
+                context.ChangeTracker.Tracked += OnContextCheckTracker_Tracked; //Do not usubscribe the old context as it is already disposed!
+                context.ChangeTracker.StateChanged += OnContextCheckTracker_StateChanged; //Do not usubscribe the old context as it is already disposed!
+            }
+
+        }
+
+
+        private async Task UpdateClusterCollectionAsync(DatabaseContext context)
+        {
+            ClustersCollection = new ObservableCollection<ClusterEntryViewModel>(context.ClusterEntries.Local.Select(x => new ClusterEntryViewModel(x, context)).ToList());
+            await Task.CompletedTask;
         }
 
         //TODO think of a better way to keep db table and viewmodel collection in sync
@@ -131,7 +152,8 @@ namespace WorldCompanyDataViewer.ViewModels
             }
         }
 
-        private async Task UpdateGeolocationInfosAsync()
+
+        public async Task UpdateGeolocationInfosAsync()
         {
             IQueryable<DataEntry> data =
                 from x in DatabaseContext.DataEntries
@@ -144,9 +166,7 @@ namespace WorldCompanyDataViewer.ViewModels
             NotValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.Where(x => x.IsNotAvailable).CountAsync();
 
             ValidPostcodesCount = await DatabaseContext.PostcodeGeodataEntries.CountAsync() - NotValidPostcodesCount;
-
         }
-
 
 
         [RelayCommand]
@@ -266,6 +286,7 @@ namespace WorldCompanyDataViewer.ViewModels
             {
                 if (DatabaseContext == null) throw new DatabaseConextNullException();
                 await Task.Run(() => AnalyzePostcodesRunnerAsync());
+                SelectedTabIndex = 1;
 
             }
             catch (DatabaseConextNullException)
@@ -289,7 +310,6 @@ namespace WorldCompanyDataViewer.ViewModels
                 .Where(x => x.IsNotAvailable == false)
                 .ToListAsync();
             List<ClusterEntry> clusters = KMeansClustering(ClusterCount, availablePostcodeLocations, ClusterIterations);
-
             StatusText += "Adding closest place";
 
             await FetchClosestPlacesAsync(clusters);
