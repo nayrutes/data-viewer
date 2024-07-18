@@ -32,7 +32,7 @@ namespace WorldCompanyDataViewer.ViewModels
         [ObservableProperty]
         private bool _isDataAvailable;
 
-
+        bool isCustomStyle = true;
         public MainWindowViewModel()
         {
             Context = new DatabaseContext();
@@ -41,6 +41,25 @@ namespace WorldCompanyDataViewer.ViewModels
             PostcodeAnalysisViewModel = new PostcodeAnalysisViewModel(new OnlinePostcodeLocationService(), Context);//Consider using Dependency Injection to configure and simplify setup
             EmailAnalysisViewModel = new EmailAnalysisViewModel();
             CompanyAnalysisViewModel = new CompanyAnalysisViewModel();
+        }
+
+        [RelayCommand]
+        public void ToggleStyle()
+        {
+            Application.Current.Resources.MergedDictionaries.Clear();
+            isCustomStyle = !isCustomStyle;
+
+            if (isCustomStyle)
+            {
+                Application.Current.Resources.MergedDictionaries.Add(
+                    new ResourceDictionary { Source = new Uri("Themes/CustomStyle1.xaml", UriKind.Relative) });
+            }
+            else
+            {
+                Application.Current.Resources.MergedDictionaries.Add(
+                    new ResourceDictionary { Source = new Uri("Themes/DefaultStyle.xaml", UriKind.Relative) });
+            }
+
         }
 
         partial void OnSelectedTabIndexChanging(int oldValue, int newValue)

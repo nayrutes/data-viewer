@@ -24,13 +24,13 @@
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
+                <Decorator Height="40"/>
                 <Button Content="Get Top Domains" Command="{Binding UpdateMailDomainsCommand}"/>
             </StackPanel>
             <DataGrid Grid.Column="1"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
-                      ItemsSource="{Binding MailDomainData}" 
-                      Margin="13,13,13,13" RowDetailsVisibilityMode="VisibleWhenSelected">
+                      ItemsSource="{Binding MailDomainData}" RowDetailsVisibilityMode="VisibleWhenSelected">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="@Domain" Binding="{Binding MailDomain}" Width="2*"/>
                     <DataGridTextColumn Header="#Counts" Binding="{Binding Count}" Width="*"/>

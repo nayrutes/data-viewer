@@ -18,18 +18,8 @@
     <DockPanel>
         <DockPanel DockPanel.Dock="Top" Height="40">
             <Label Content="Status: " VerticalAlignment="Center"/>
-            <TextBox x:Name="AnalysisStatusLabel" Text="{Binding StatusText}" VerticalContentAlignment="Center" TextWrapping="Wrap">
-                <TextBox.Style>
-                    <Style TargetType="TextBox">
-                        <Setter Property="IsReadOnly" Value="True" />
-                        <Setter Property="BorderThickness" Value="0" />
-                        <Setter Property="TextWrapping" Value="Wrap" />
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="BorderBrush" Value="Transparent" />
-                        <Setter Property="Foreground" Value="{StaticResource Color1}" />
-                    </Style>
-                </TextBox.Style>
-            </TextBox>
+            <Label x:Name="AnalysisStatusLabel" Content="{Binding StatusText}" VerticalContentAlignment="Center">
+            </Label>
         </DockPanel>
         <Grid>
             <Grid.ColumnDefinitions>
@@ -37,7 +27,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <Decorator Height="20"/>
+                <Decorator Height="70"/>
                 <Button Content="Analyze Data" Command="{Binding AnalayzeDataForPostCodesCommand}"/>
                 <DockPanel Margin="2,2,2,2">
                     <Label Content="Clusters #:"/>
@@ -116,7 +106,7 @@
                             <local:LabeledProperty Content="{Binding PeopleCount}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding PostcodeCount}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding ClostestPostcode}"  DockPanel.Dock="Top"/>
-                            <local:LabeledProperty LabelText="Closest County" Content="{Binding ClostestTown}"  DockPanel.Dock="Top"/>
+                            <local:LabeledProperty LabelText="Admin District" Content="{Binding ClostestTown}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding Longitude}"  DockPanel.Dock="Top"/>
                             <local:LabeledProperty Content="{Binding Latitude}"  DockPanel.Dock="Top"/>
                             <Label DockPanel.Dock="Top" Content="People in cluster" HorizontalAlignment="Center"/>

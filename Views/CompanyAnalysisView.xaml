@@ -18,6 +18,7 @@
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
+                <Decorator Height="40"/>
                 <Button Content="Analyse Companies" Command="{Binding AnalyseCompaniesCommand}"/>
             </StackPanel>
             <DataGrid Grid.Column="1"

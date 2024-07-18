@@ -9,9 +9,11 @@
         mc:Ignorable="d"
         Title="Data Viewer" Height="700" Width="1200" Loaded="Window_Loaded">
     <DockPanel>
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-            <Button Command="{Binding LoadCSVCommand}" Content="Load CSV" Height="30" Width="100"/>
-        </StackPanel>
+        <DockPanel DockPanel.Dock="Top" Height="40">
+            <Button DockPanel.Dock="Left" Command="{Binding LoadCSVCommand}" Content="Load CSV" Width="100" Height="30"/>
+            <Button DockPanel.Dock="Right" Command="{Binding ToggleStyleCommand}" Content="Toggle Styles" Width="100" Height="30"/>
+            <DockPanel/>
+        </DockPanel>
         <TabControl DockPanel.Dock="Top" SelectedIndex="{Binding SelectedTabIndex}" SelectionChanged="TabControl_SelectionChanged">
 
             <TabItem Header="Main Data View">
