@@ -41,17 +41,17 @@ namespace WorldCompanyDataViewer.Utils
                     string[] entry = CSVParser.Split(line);
                     DataEntry dataEntry = new DataEntry
                     {
-                        FirstName = entry[0],
-                        LastName = entry[1],
-                        CompanyName = entry[2],
-                        Address = entry[3],
-                        City = entry[4],
-                        County = entry[5],
-                        Postal = entry[6],
-                        Phone1 = entry[7],
-                        Phone2 = entry[8],
-                        Email = entry[9],
-                        Website = entry[10],
+                        FirstName = entry[0].Trim('"'),
+                        LastName = entry[1].Trim('"'),
+                        CompanyName = entry[2].Trim('"'),
+                        Address = entry[3].Trim('"'),
+                        City = entry[4].Trim('"'),
+                        County = entry[5].Trim('"'),
+                        Postal = entry[6].Trim('"'),
+                        Phone1 = entry[7].Trim('"'),
+                        Phone2 = entry[8].Trim('"'),
+                        Email = entry[9].Trim('"'),
+                        Website = entry[10].Trim('"'),
                     };
                     lock (dataEntries)
                     {
